@@ -1,0 +1,32 @@
+{
+  "name": "uthra-root",
+  "version": "1.0.0",
+  "description": "Uthra - Farmer-Buyer Platform Root Package",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "backend": "cd Backend && npm run dev",
+    "frontend": "cd Frontend && npm start",
+    "install-all": "npm install && cd Backend && npm install && cd ../Frontend && npm install"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^8.0.3",
+    "dotenv": "^16.3.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "compression": "^1.7.4",
+    "morgan": "^1.10.0",
+    "express-validator": "^7.0.1",
+    "twilio": "^4.20.0",
+    "multer": "^1.4.5-lts.2",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

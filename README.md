@@ -1,14 +1,14 @@
-🌾 Project Title: Uthra
+# 🌾 Uthra
 
-“Light of Communication between Farmers and Buyers”
-______________________________________________________________________________________________
+**"Light of Communication between Farmers and Buyers"**
 
-🌟 Project Overview
+A farmer–buyer connecting platform that combines voice (IVR), SMS, and web technology to directly link farmers and buyers — ensuring transparency, fair pricing, and real-time access to crop demand.
 
-Uthra is a farmer–buyer connecting platform designed to empower even the simplest mobile user to participate in the digital economy.
-It combines voice (IVR), SMS, and web technology to directly link farmers and buyers — ensuring transparency, fair pricing, and real-time access to crop demand.
+---
 
-The heart of Uthra lies in its conversational intelligence — powered by NLP models that understand spoken crop names and messages, and ML logic that learns from interactions to improve recognition, crop classification, and buyer–farmer matchmaking.
+## 🌟 Overview
+
+Uthra empowers even the simplest mobile user to participate in the digital economy. The platform features conversational intelligence powered by NLP models that understand spoken crop names and messages, with ML logic that learns from interactions to improve recognition, crop classification, and buyer–farmer matchmaking.
 ______________________________________________________________________________________________
 
 🧩 System Roles
@@ -234,42 +234,80 @@ Requests → buyer_id, crop_id, qty, price, status
 Call Logs → farmer_id, request_id, attempts, status
 ______________________________________________________________________________________________
 
-🚀 Development Plan (Step-by-Step)
+---
 
-Design UI/UX for web (React) — minimal farmer dashboard.
+## 🚀 Quick Start
 
-Set up backend (Flask/FastAPI) with MongoDB.
+### Prerequisites
+- **MongoDB** running on `localhost:27017`
+- **Node.js** (v14 or higher)
+- **npm** package manager
 
-Integrate Twilio/Exotel IVR and connect to API endpoints.
+### Start Backend
+```powershell
+node server.js
+```
+**Backend:** `http://localhost:5000`
 
-Train NLP model to detect crop names from speech/text.
+### Start Frontend
+```powershell
+cd frontend
+npm install  # First time only
+npm start
+```
+**Frontend:** `http://localhost:3000`
 
-Add SMS gateway and link to intent classifier.
+---
 
-Automate workflows in n8n:
+## 🔐 Test Credentials
 
-Incoming call → verification → task routing
+| Role   | Mobile      | Password |
+|--------|-------------|----------|
+| Admin  | 9876543210  | 123456   |
+| Farmer | 9876543211  | 123456   |
+| Buyer  | 9876543212  | 123456   |
 
-Buyer request → IVR call → farmer response
+---
 
-Build web dashboard for buyers/admin.
+## 📁 Project Structure
 
-Add analytics + notifications.
+```
+Uthra/
+├── Backend/           # API controllers, routes, middleware
+├── Database/          # Mongoose schemas
+├── frontend/          # React + TypeScript application
+├── server.js          # Backend entry point
+├── .env               # Environment variables
+├── README.md          # This file
+└── HOW_TO_RUN.md     # Detailed instructions
+```
 
-Test full pipeline (IVR + SMS + Web).
+---
 
-Deploy Uthra (production phase).
-______________________________________________________________________________________________
+## 📚 Documentation
 
-💡 Future Enhancements
+- **[HOW_TO_RUN.md](HOW_TO_RUN.md)** - Detailed setup and running instructions
+- **[COMPLETION_SUMMARY.md](COMPLETION_SUMMARY.md)** - Full project implementation details
 
-Regional language voice support (Tamil, Hindi, Telugu).
+---
 
-Smart pricing recommendation based on market trends.
+## ⚙️ Tech Stack
 
-Crop demand prediction using seasonal ML models.
+**Frontend:** React 18, TypeScript, Redux Toolkit, React Router v6  
+**Backend:** Node.js, Express.js, MongoDB, Mongoose  
+**Authentication:** JWT + Role-based access control  
+**Features:** IVR integration ready, SMS gateway ready, NLP/ML integration ready
 
-Chatbot integration for WhatsApp.
+---
 
-Blockchain-based traceability for verified produce.
-______________________________________________________________________________________________
+## 💡 Future Enhancements
+
+- Regional language voice support (Tamil, Hindi, Telugu)
+- Smart pricing recommendation based on market trends
+- Crop demand prediction using seasonal ML models
+- Chatbot integration for WhatsApp
+- Blockchain-based traceability for verified produce
+
+---
+
+**🌾 Uthra - Connecting Farmers and Buyers** ✨
