@@ -31,6 +31,9 @@ export interface FarmerDetails {
 export interface BuyerDetails {
   businessName: string;
   businessType: 'wholesaler' | 'retailer' | 'processor' | 'exporter';
+  companyName?: string;
+  companyRegistrationNumber?: string;
+  numberOfEmployees?: number;
   gstNumber?: string;
   preferredCategories: string[];
 }
@@ -62,6 +65,7 @@ export interface AuthState {
   error: string | null;
   registrationStage: RegistrationStage;
   tempUserId: string | null;
+  tempBuyerType: 'individual' | 'company' | null;
 }
 
 // Registration form types
@@ -69,6 +73,7 @@ export interface RegisterStep1Data {
   mobile: string;
   name: string;
   role: UserRole;
+  buyerType?: 'individual' | 'company';
 }
 
 export interface RegisterStep2Data {

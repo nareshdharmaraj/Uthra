@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../features/auth/authSlice';
 import { RootState } from '../../types';
@@ -12,12 +12,17 @@ interface LayoutProps {
 
 const FarmerLayout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
 
   const handleLogout = () => {
     dispatch(logout());
     navigate('/');
+  };
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
 
   return (
@@ -28,10 +33,10 @@ const FarmerLayout: React.FC<LayoutProps> = ({ children }) => {
           <p>Farmer Dashboard</p>
         </div>
         <nav className="sidebar-nav">
-          <Link to="/farmer" className="nav-item">🏠 Home</Link>
-          <Link to="/farmer/crops" className="nav-item">🌾 My Crops</Link>
-          <Link to="/farmer/requests" className="nav-item">📬 Requests</Link>
-          <Link to="/farmer/profile" className="nav-item">👤 Profile</Link>
+          <Link to="/farmer" className={`nav-item ${isActive('/farmer') ? 'active' : ''}`}>🏠 Home</Link>
+          <Link to="/farmer/crops" className={`nav-item ${isActive('/farmer/crops') ? 'active' : ''}`}>🌾 My Crops</Link>
+          <Link to="/farmer/requests" className={`nav-item ${isActive('/farmer/requests') ? 'active' : ''}`}>📬 Requests</Link>
+          <Link to="/farmer/profile" className={`nav-item ${isActive('/farmer/profile') ? 'active' : ''}`}>👤 Profile</Link>
         </nav>
       </aside>
 
@@ -41,7 +46,7 @@ const FarmerLayout: React.FC<LayoutProps> = ({ children }) => {
             <h3>Welcome, {user?.name}</h3>
           </div>
           <div className="header-right">
-            <button onClick={handleLogout} className="btn btn-logout">Logout</button>
+            <button onClick={handleLogout} className="btn btn-logout">🚪 Logout</button>
           </div>
         </header>
 

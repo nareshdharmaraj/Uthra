@@ -47,7 +47,7 @@ function setupMiddleware() {
 // Setup routes - ONLY after database is connected
 function setupRoutes() {
   // Clear require cache for models to force re-evaluation after connection
-  delete require.cache[require.resolve('./Database/UserSchema')];
+  delete require.cache[require.resolve('./Database/BaseUserSchema')];
   delete require.cache[require.resolve('./Database/CropSchema')];
   delete require.cache[require.resolve('./Database/RequestSchema')];
   delete require.cache[require.resolve('./Database/NotificationSchema')];

@@ -1,12 +1,34 @@
-// Lazy-load User model to ensure mongoose connection is established first
-const getUserModel = () => require('../models/User');
+// Load role-specific models
+const Farmer = require('../models/Farmer');
+const Buyer = require('../models/BuyerModel');
+const Admin = require('../models/AdminModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+
+// Helper to get model by role
+const getModelByRole = (role) => {
+  if (role === 'farmer') return Farmer;
+  if (role === 'buyer') return Buyer;
+  if (role === 'admin') return Admin;
+  return null;
+};
+
+// Helper to find user by ID across all collections
+const findUserById = async (userId) => {
+  let user = await Farmer.findById(userId);
+  if (user) return user;
+  
+  user = await Buyer.findById(userId);
+  if (user) return user;
+  
+  user = await Admin.findById(userId);
+  return user;
+};
 
 // Generate JWT token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
+    expiresIn: process.env.JWT_EXPIRE || '30d'
   });
 };
 
@@ -15,31 +37,53 @@ const generateToken = (id) => {
 // @access  Public
 exports.initiateRegistration = async (req, res, next) => {
   try {
-    const User = getUserModel();
-    const { mobile, name, role } = req.body;
+    const { mobile, name, role, buyerType } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ mobile });
-    if (existingUser) {
+    const Model = getModelByRole(role);
+    if (!Model) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role. Must be farmer, buyer, or admin'
+      });
+    }
+
+    // Check if user already exists in any collection
+    const existingFarmer = await Farmer.findOne({ mobile });
+    const existingBuyer = await Buyer.findOne({ mobile });
+    const existingAdmin = await Admin.findOne({ mobile });
+    
+    if (existingFarmer || existingBuyer || existingAdmin) {
       return res.status(400).json({
         success: false,
         message: 'Mobile number already registered'
       });
     }
 
+    // Validate buyerType for buyers
+    if (role === 'buyer' && !buyerType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Buyer type (individual or company) is required'
+      });
+    }
+
     // Create user with basic info (Stage 0)
-    const user = await User.create({
+    const userData = {
       mobile,
       name,
       role,
       registrationStage: 0
-    });
+    };
 
-    // Generate OTP (mock implementation - integrate with actual SMS service)
+    if (role === 'buyer') {
+      userData.buyerType = buyerType;
+    }
+
+    const user = await Model.create(userData);
+
+    // Generate OTP
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    
-    // TODO: Send OTP via SMS
-    console.log(`OTP for ${mobile}: ${otp}`);
+    console.log(`📱 Registration initiated for ${role}: ${mobile} (OTP: ${otp})`);
 
     res.status(201).json({
       success: true,
@@ -48,7 +92,7 @@ exports.initiateRegistration = async (req, res, next) => {
         userId: user._id,
         mobile: user.mobile,
         registrationStage: 0,
-        // In development only - remove in production
+        ...(role === 'buyer' && { buyerType }),
         ...(process.env.NODE_ENV === 'development' && { otp })
       }
     });
@@ -62,10 +106,9 @@ exports.initiateRegistration = async (req, res, next) => {
 // @access  Public
 exports.completeRegistrationStep2 = async (req, res, next) => {
   try {
-    const User = getUserModel();
     const { userId, location } = req.body;
 
-    const user = await User.findById(userId);
+    const user = await findUserById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -85,6 +128,8 @@ exports.completeRegistrationStep2 = async (req, res, next) => {
     user.registrationStage = 1;
     await user.save();
 
+    console.log(`✅ Location saved for ${user.role}: ${user.name}`);
+
     res.status(200).json({
       success: true,
       message: 'Location details saved',
@@ -103,10 +148,9 @@ exports.completeRegistrationStep2 = async (req, res, next) => {
 // @access  Public
 exports.completeRegistrationStep3 = async (req, res, next) => {
   try {
-    const User = getUserModel();
     const { userId, farmerDetails, buyerDetails, password, pin } = req.body;
 
-    const user = await User.findById(userId);
+    const user = await findUserById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -131,13 +175,15 @@ exports.completeRegistrationStep3 = async (req, res, next) => {
         });
       }
 
-      user.farmerDetails = farmerDetails;
+      // Save farmer-specific fields directly in farmer document
       user.pin = pin; // Store PIN as plain text for IVR access
+      if (password) user.password = password; // Optional password for web login
+      if (farmerDetails?.farmSize) user.farmSize = farmerDetails.farmSize;
+      if (farmerDetails?.farmingType) user.farmingType = farmerDetails.farmingType;
+      if (farmerDetails?.crops) user.crops = farmerDetails.crops;
+      if (farmerDetails?.bankDetails) user.bankDetails = farmerDetails.bankDetails;
+      if (farmerDetails?.preferredLanguage) user.preferredLanguage = farmerDetails.preferredLanguage;
       
-      // Password is optional for farmers (they primarily use PIN for IVR)
-      if (password) {
-        user.password = password; // Store password as plain text
-      }
     } else if (user.role === 'buyer') {
       // Validate password for buyers
       if (!password || password.length < 6) {
@@ -147,8 +193,20 @@ exports.completeRegistrationStep3 = async (req, res, next) => {
         });
       }
       
-      user.buyerDetails = buyerDetails;
+      // Save buyer-specific fields directly in buyer document
       user.password = password; // Store password as plain text
+      if (buyerDetails?.businessName) user.businessName = buyerDetails.businessName;
+      if (buyerDetails?.businessType) user.businessType = buyerDetails.businessType;
+      if (buyerDetails?.gstNumber) user.gstNumber = buyerDetails.gstNumber;
+      if (buyerDetails?.preferredCategories) user.preferredCategories = buyerDetails.preferredCategories;
+      if (buyerDetails?.bankDetails) user.bankDetails = buyerDetails.bankDetails;
+      // Company-specific fields (if buyerType is 'company')
+      if (user.buyerType === 'company') {
+        if (buyerDetails?.companyName) user.companyName = buyerDetails.companyName;
+        if (buyerDetails?.companyRegistrationNumber) user.companyRegistrationNumber = buyerDetails.companyRegistrationNumber;
+        if (buyerDetails?.numberOfEmployees) user.numberOfEmployees = buyerDetails.numberOfEmployees;
+      }
+      
     } else if (user.role === 'admin') {
       // Validate password for admins
       if (!password || password.length < 6) {
@@ -184,10 +242,9 @@ exports.completeRegistrationStep3 = async (req, res, next) => {
 // @access  Public
 exports.completeRegistrationStep4 = async (req, res, next) => {
   try {
-    const User = getUserModel();
     const { userId, email } = req.body;
 
-    const user = await User.findById(userId);
+    const user = await findUserById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -204,7 +261,7 @@ exports.completeRegistrationStep4 = async (req, res, next) => {
 
     // Update final details
     if (email) user.email = email;
-    user.registrationStage = 4;
+    user.registrationStage = 3;
     user.registrationCompleted = true;
     user.isVerified = true; // Auto-verify for now
     user.isActive = true; // Activate user account
@@ -240,23 +297,27 @@ exports.completeRegistrationStep4 = async (req, res, next) => {
   }
 };
 
-// @desc    Login user (Web - Buyer/Admin)
+// @desc    Login user (Web - Farmer/Buyer/Admin)
 // @route   POST /api/auth/login
 // @access  Public
 exports.login = async (req, res, next) => {
   try {
-    const User = getUserModel(); // Lazy-load the model
     const mongoose = require('mongoose');
     console.log('🔐 Login attempt:', { mobile: req.body.mobile });
     console.log('🔍 Mongoose connection state:', mongoose.connection.readyState);
-    console.log('🔍 User model connection state:', User.db?.readyState);
     
     const { mobile, password } = req.body;
 
-    // Find user
+    // Search in all collections (farmers, buyers, admins)
     console.log('📞 Searching for user with mobile:', mobile);
-    const user = await User.findOne({ mobile }).maxTimeMS(5000);
-    console.log('✅ User query completed:', user ? `Found ${user.name}` : 'Not found');
+    let user = await Farmer.findOne({ mobile }).maxTimeMS(5000);
+    if (!user) {
+      user = await Buyer.findOne({ mobile }).maxTimeMS(5000);
+    }
+    if (!user) {
+      user = await Admin.findOne({ mobile }).maxTimeMS(5000);
+    }
+    console.log('✅ User query completed:', user ? `Found ${user.name} (${user.role})` : 'Not found');
     
     if (!user) {
       return res.status(401).json({
@@ -323,13 +384,12 @@ exports.login = async (req, res, next) => {
 // @access  Public
 exports.loginWithPIN = async (req, res, next) => {
   try {
-    const User = getUserModel();
     const { mobile, pin } = req.body;
 
     console.log(`📞 IVR Login attempt - Mobile: ${mobile}`);
 
-    // Find farmer
-    const user = await User.findOne({ mobile, role: 'farmer' });
+    // Find farmer in farmers collection
+    const user = await Farmer.findOne({ mobile });
     if (!user) {
       console.log(`❌ IVR Login failed - Mobile not found: ${mobile}`);
       return res.status(401).json({
@@ -384,7 +444,7 @@ exports.loginWithPIN = async (req, res, next) => {
 
     console.log(`✅ IVR Login successful - ${user.name} (${mobile}), Total IVR calls: ${user.totalIVRCalls}`);
 
-    // Return greeting message as per README
+    // Return greeting message with farmer details
     res.status(200).json({
       success: true,
       message: `Vanakkam, ${user.name}! Welcome to Uthra.`,
@@ -395,8 +455,10 @@ exports.loginWithPIN = async (req, res, next) => {
           name: user.name,
           mobile: user.mobile,
           role: user.role,
-          farmerDetails: user.farmerDetails,
-          preferredLanguage: user.farmerDetails?.preferredLanguage || 'tamil'
+          farmSize: user.farmSize,
+          farmingType: user.farmingType,
+          crops: user.crops,
+          preferredLanguage: user.preferredLanguage || 'tamil'
         },
         greeting: {
           tamil: `வணக்கம், ${user.name}! உத்ராவிற்கு வரவேற்கிறோம்.`,

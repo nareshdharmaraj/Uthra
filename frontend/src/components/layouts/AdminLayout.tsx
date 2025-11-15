@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../features/auth/authSlice';
 import { RootState } from '../../types';
@@ -12,12 +12,17 @@ interface LayoutProps {
 
 const AdminLayout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
 
   const handleLogout = () => {
     dispatch(logout());
     navigate('/');
+  };
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
 
   return (
@@ -28,11 +33,11 @@ const AdminLayout: React.FC<LayoutProps> = ({ children }) => {
           <p>Admin Panel</p>
         </div>
         <nav className="sidebar-nav">
-          <Link to="/admin" className="nav-item">📊 Dashboard</Link>
-          <Link to="/admin/users" className="nav-item">👥 Users</Link>
-          <Link to="/admin/crops" className="nav-item">🌾 Crops</Link>
-          <Link to="/admin/requests" className="nav-item">📋 Requests</Link>
-          <Link to="/admin/analytics" className="nav-item">📈 Analytics</Link>
+          <Link to="/admin" className={`nav-item ${isActive('/admin') ? 'active' : ''}`}>📊 Dashboard</Link>
+          <Link to="/admin/users" className={`nav-item ${isActive('/admin/users') ? 'active' : ''}`}>👥 Users</Link>
+          <Link to="/admin/crops" className={`nav-item ${isActive('/admin/crops') ? 'active' : ''}`}>🌾 Crops</Link>
+          <Link to="/admin/requests" className={`nav-item ${isActive('/admin/requests') ? 'active' : ''}`}>📋 Requests</Link>
+          <Link to="/admin/analytics" className={`nav-item ${isActive('/admin/analytics') ? 'active' : ''}`}>📈 Analytics</Link>
         </nav>
       </aside>
 
@@ -42,7 +47,7 @@ const AdminLayout: React.FC<LayoutProps> = ({ children }) => {
             <h3>Admin: {user?.name}</h3>
           </div>
           <div className="header-right">
-            <button onClick={handleLogout} className="btn btn-logout">Logout</button>
+            <button onClick={handleLogout} className="btn btn-logout">🚪 Logout</button>
           </div>
         </header>
 

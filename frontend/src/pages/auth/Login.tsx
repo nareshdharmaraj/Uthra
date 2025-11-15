@@ -44,16 +44,37 @@ const Login: React.FC = () => {
 
   return (
     <div className="login-container">
+      <div className="login-background">
+        <div className="gradient-orb orb-1"></div>
+        <div className="gradient-orb orb-2"></div>
+        <div className="gradient-orb orb-3"></div>
+      </div>
+      
       <div className="login-card">
+        <Link to="/" className="back-to-home">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10 18L2 10L10 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Back to Home
+        </Link>
+        
         <div className="login-header">
-          <h1>🌾 Uthra</h1>
+          <div className="logo-wrapper">
+            <span className="logo-icon">🌾</span>
+            <span className="logo-text">Uthra</span>
+          </div>
           <h2>Welcome Back</h2>
           <p>Login to access your dashboard</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="login-form">
           <div className="form-group">
-            <label>Mobile Number</label>
+            <label>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1zm1 2v8h8V4H4zm2 2h4v1H6V6zm0 2h4v1H6V8z"/>
+              </svg>
+              Mobile Number
+            </label>
             <input
               type="tel"
               {...register('mobile', {
@@ -71,7 +92,12 @@ const Login: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label>Password</label>
+            <label>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 1a3 3 0 00-3 3v1H4a1 1 0 00-1 1v7a1 1 0 001 1h8a1 1 0 001-1V6a1 1 0 00-1-1h-1V4a3 3 0 00-3-3zM7 4a1 1 0 112 0v1H7V4zm1 5a1 1 0 100 2 1 1 0 000-2z"/>
+              </svg>
+              Password
+            </label>
             <input
               type="password"
               {...register('password', {
@@ -88,17 +114,36 @@ const Login: React.FC = () => {
           </div>
 
           <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>
-            {isLoading ? 'Logging in...' : 'Login'}
+            {isLoading ? (
+              <>
+                <span className="spinner"></span>
+                Logging in...
+              </>
+            ) : (
+              <>
+                Login
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 12L10 8L6 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </>
+            )}
           </button>
         </form>
 
+        <div className="login-divider">
+          <span>OR</span>
+        </div>
+
         <div className="login-footer">
-          <p>
+          <p className="signup-prompt">
             Don't have an account? <Link to="/register">Register here</Link>
           </p>
-          <p className="ivr-note">
-            <strong>Farmers:</strong> You can also call our IVR number to access the platform
-          </p>
+          <div className="ivr-note">
+            <span className="ivr-icon">📞</span>
+            <div>
+              <strong>Farmers:</strong> You can also call our IVR number to access the platform
+            </div>
+          </div>
         </div>
       </div>
     </div>

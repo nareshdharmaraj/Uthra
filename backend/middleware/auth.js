@@ -1,5 +1,19 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const Farmer = require('../models/Farmer');
+const Buyer = require('../models/BuyerModel');
+const Admin = require('../models/AdminModel');
+
+// Helper to find user by ID across all collections
+const findUserById = async (userId) => {
+  let user = await Farmer.findById(userId).select('-password -pin');
+  if (user) return user;
+  
+  user = await Buyer.findById(userId).select('-password -pin');
+  if (user) return user;
+  
+  user = await Admin.findById(userId).select('-password -pin');
+  return user;
+};
 
 // Protect routes - verify JWT token
 exports.protect = async (req, res, next) => {
@@ -23,8 +37,8 @@ exports.protect = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Get user from token
-      req.user = await User.findById(decoded.id).select('-password -pin');
+      // Get user from token - search across all role-specific collections
+      req.user = await findUserById(decoded.id);
 
       if (!req.user) {
         return res.status(401).json({

@@ -23,6 +23,7 @@ const initialState: AuthState = {
   error: null,
   registrationStage: 0,
   tempUserId: null,
+  tempBuyerType: null,
 };
 
 // Register Step 1 - Initiate registration
@@ -173,6 +174,7 @@ const authSlice = createSlice({
       .addCase(registerStep1.fulfilled, (state, action) => {
         state.isLoading = false;
         state.tempUserId = action.payload.userId;
+        state.tempBuyerType = (action.payload as any).buyerType || null;
         state.registrationStage = 1;
       })
       .addCase(registerStep1.rejected, (state, action) => {
@@ -228,6 +230,7 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
+        state.tempBuyerType = null;
         state.tempUserId = null;
         state.registrationStage = 0;
       })

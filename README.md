@@ -6,6 +6,25 @@ A farmer–buyer connecting platform that combines voice (IVR), SMS, and web tec
 
 ---
 
+## 🗄️ Database Architecture
+
+**Separate Role-Based Collections** ✅
+
+The platform uses MongoDB with **separate collections** for each user type:
+
+- **`baseusers`** - Authentication & common data (mobile, name, email, role, pin/password, location)
+- **`farmers`** - Farmer-specific data (farmSize, farmingType, crops, bankDetails)  
+- **`buyers`** - Buyer-specific data (buyerType, businessName, companyName, numberOfEmployees)
+- **`admins`** - Admin-specific data (adminLevel, permissions)
+
+**Benefits:**
+- ✅ Clean data separation by role
+- ✅ No embedded documents or null fields
+- ✅ Efficient queries (fetch only needed data)
+- ✅ Easy to extend role-specific features
+
+---
+
 ## 🌟 Overview
 
 Uthra empowers even the simplest mobile user to participate in the digital economy. The platform features conversational intelligence powered by NLP models that understand spoken crop names and messages, with ML logic that learns from interactions to improve recognition, crop classification, and buyer–farmer matchmaking.
@@ -45,6 +64,26 @@ Browses or searches available crops through the web dashboard or mobile interfac
 Can request a specific quantity, offer a price, and track confirmation.
 
 Receives SMS updates about acceptance, rejection, or counteroffers from the farmer.
+
+💝 Donator (Coming Soon)
+
+Support the platform's growth and development through donations.
+
+Features (Planned):
+- Donation dashboard with transaction history
+- Multiple payment options (UPI, Net Banking, Cards)
+- Tax receipt generation for eligible donations
+- Recognition badge on profile
+- Platform development updates and progress reports
+
+Benefits:
+- Contribute to agricultural technology advancement
+- Support farmers' digital transformation
+- Receive regular updates on platform impact
+- Tax deductions as per applicable laws
+- Community recognition for contributions
+
+Status: Backend implementation planned for future release.
 ______________________________________________________________________________________________
 
 🔁 IVR User Flow (Voice Interaction)

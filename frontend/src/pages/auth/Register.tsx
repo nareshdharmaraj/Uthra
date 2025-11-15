@@ -21,6 +21,7 @@ interface Step1FormData {
   mobile: string;
   name: string;
   role: UserRole;
+  buyerType?: 'individual' | 'company';
 }
 
 interface Step2FormData {
@@ -45,6 +46,9 @@ interface Step3FarmerFormData {
 interface Step3BuyerFormData {
   businessName: string;
   businessType: 'wholesaler' | 'retailer' | 'processor' | 'exporter';
+  companyName?: string;
+  companyRegistrationNumber?: string;
+  numberOfEmployees?: number;
   gstNumber?: string;
   preferredCategories: string;
   password: string;
@@ -63,7 +67,7 @@ const Register: React.FC = () => {
   const searchParams = new URLSearchParams(location.search);
   const roleFromURL = searchParams.get('role') as UserRole | null;
 
-  const { user, isLoading, error, isAuthenticated, registrationStage, tempUserId } = useSelector(
+  const { user, isLoading, error, isAuthenticated, registrationStage, tempUserId, tempBuyerType } = useSelector(
     (state: RootState) => state.auth
   );
 
@@ -117,11 +121,18 @@ const Register: React.FC = () => {
 
   // Step 1 - Basic Information
   const onSubmitStep1: SubmitHandler<Step1FormData> = async (data) => {
+    // Validate buyerType if role is buyer
+    if (data.role === 'buyer' && !data.buyerType) {
+      toast.error('Please select buyer type (Individual or Company)');
+      return;
+    }
+
     await dispatch(
       registerStep1({
         mobile: data.mobile,
         name: data.name,
         role: data.role,
+        buyerType: data.buyerType,
       })
     );
   };
@@ -199,6 +210,9 @@ const Register: React.FC = () => {
         buyerDetails: {
           businessName: data.businessName,
           businessType: data.businessType,
+          companyName: data.companyName,
+          companyRegistrationNumber: data.companyRegistrationNumber,
+          numberOfEmployees: data.numberOfEmployees,
           gstNumber: data.gstNumber,
           preferredCategories: categoriesArray,
         },
@@ -235,6 +249,27 @@ const Register: React.FC = () => {
         </select>
         {errors.role && <span className="error">{errors.role.message}</span>}
       </div>
+
+      {/* Show buyer type selection if buyer role is selected */}
+      {selectedRole === 'buyer' && (
+        <div className="form-group">
+          <label>Buyer Type *</label>
+          <select 
+            {...register('buyerType', { 
+              required: selectedRole === 'buyer' ? 'Buyer type is required' : false 
+            })} 
+            className="form-control"
+          >
+            <option value="">Select buyer type...</option>
+            <option value="individual">Individual Buyer</option>
+            <option value="company">Company/Organization</option>
+          </select>
+          {errors.buyerType && <span className="error">{errors.buyerType.message}</span>}
+          <small className="form-text">
+            Choose <strong>Individual</strong> for personal purchases or <strong>Company</strong> for business/organization
+          </small>
+        </div>
+      )}
 
       <div className="form-group">
         <label>Full Name *</label>
@@ -481,7 +516,51 @@ const Register: React.FC = () => {
 
   const renderStep3Buyer = () => (
     <form onSubmit={handleSubmit(onSubmitStep3Buyer)} className="form-step">
-      <h3>Buyer Details</h3>
+      <h3>{tempBuyerType === 'company' ? 'Company Details' : 'Buyer Details'}</h3>
+
+      {/* Show company-specific fields if buyerType is company */}
+      {tempBuyerType === 'company' && (
+        <>
+          <div className="form-group">
+            <label>Company Name *</label>
+            <input
+              type="text"
+              {...register('companyName', {
+                required: tempBuyerType === 'company' ? 'Company name is required' : false,
+                minLength: { value: 3, message: 'Company name must be at least 3 characters' },
+              })}
+              className="form-control"
+              placeholder="Your company name"
+            />
+            {errors.companyName && <span className="error">{errors.companyName.message}</span>}
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Company Registration Number</label>
+              <input
+                type="text"
+                {...register('companyRegistrationNumber')}
+                className="form-control"
+                placeholder="Registration number"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Number of Employees</label>
+              <input
+                type="number"
+                {...register('numberOfEmployees', {
+                  min: { value: 1, message: 'Must be at least 1' }
+                })}
+                className="form-control"
+                placeholder="Number of employees"
+              />
+              {errors.numberOfEmployees && <span className="error">{errors.numberOfEmployees.message}</span>}
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="form-group">
         <label>Business Name *</label>
