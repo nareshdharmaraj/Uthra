@@ -28,16 +28,22 @@ const Home: React.FC = () => {
         setLoading(true);
         
         // Fetch crops data
-        const cropsResponse = await api.get('/crops/farmer');
-        const crops = cropsResponse.data;
+        const cropsResponse = await api.get('/farmers/crops');
+        const crops = cropsResponse.data.data || [];
         
         // Fetch requests data
-        const requestsResponse = await api.get('/requests/farmer');
-        const requests = requestsResponse.data;
+        const requestsResponse = await api.get('/farmers/requests');
+        const requests = requestsResponse.data.data || [];
         
-        // Fetch IVR call logs
-        const ivrResponse = await api.get('/ivr/calls');
-        const ivrCalls = ivrResponse.data;
+        // Fetch IVR call logs (optional, set to 0 if not available)
+        let ivrCalls = [];
+        try {
+          const ivrResponse = await api.get('/ivr/calls');
+          ivrCalls = ivrResponse.data || [];
+        } catch (err) {
+          // IVR endpoint might not exist yet
+          console.log('IVR calls not available');
+        }
         
         setStats({
           totalCrops: crops.length || 0,
@@ -83,9 +89,9 @@ const Home: React.FC = () => {
       <div className="info-section">
         <h2>⚡ Quick Actions</h2>
         <div className="actions-grid">
-          <button className="action-btn" onClick={() => navigate('/farmer/crops/new')}>➕ Add New Crop</button>
-          <button className="action-btn" onClick={() => navigate('/farmer/crops')}>📋 View All Crops</button>
-          <button className="action-btn" onClick={() => navigate('/farmer/requests')}>📬 Check Requests</button>
+          <button className="action-btn" onClick={() => navigate('/farmer/my-crops')}>➕ Add New Crop</button>
+          <button className="action-btn" onClick={() => navigate('/farmer/my-crops')}>📋 View All Crops</button>
+          <button className="action-btn" onClick={() => navigate('/farmer/my-requests')}>📬 Check Requests</button>
           <button className="action-btn" onClick={() => navigate('/farmer/profile')}>👤 Update Profile</button>
         </div>
       </div>

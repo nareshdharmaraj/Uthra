@@ -1,4 +1,4 @@
-const { mongoose } = require('../Backend/config/database');
+const { mongoose } = require('../backend/config/database');
 
 const notificationSchema = new mongoose.Schema({
   user: {

@@ -27,4 +27,8 @@ router.get('/dashboard', farmerController.getDashboardStats);
 // IVR call logs
 router.get('/call-logs', farmerController.getCallLogs);
 
+// Profile management
+router.get('/profile', farmerController.getProfile);
+router.put('/profile', farmerController.updateProfile);
+
 module.exports = router;

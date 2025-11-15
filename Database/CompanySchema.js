@@ -1,5 +1,5 @@
 // Use the connected mongoose instance from database config
-const { mongoose } = require('../Backend/config/database');
+const { mongoose } = require('../backend/config/database');
 
 const companySchema = new mongoose.Schema({
   // Company Information

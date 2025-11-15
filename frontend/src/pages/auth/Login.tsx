@@ -17,6 +17,7 @@ interface LoginFormData {
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const loginAttemptedRef = React.useRef(false);
 
   const { user, isLoading, error, isAuthenticated } = useSelector((state: RootState) => state.auth);
 
@@ -31,14 +32,18 @@ const Login: React.FC = () => {
       toast.error(error);
       dispatch(clearError());
     }
+  }, [error, dispatch]);
 
-    if (isAuthenticated && user) {
+  useEffect(() => {
+    // Only navigate after a login attempt, not on initial page load
+    if (isAuthenticated && user && loginAttemptedRef.current) {
       toast.success(`Welcome back, ${user.name}!`);
       navigate(`/${user.role}`);
     }
-  }, [user, error, isAuthenticated, navigate, dispatch]);
+  }, [isAuthenticated, user, navigate]);
 
   const onSubmit: SubmitHandler<LoginFormData> = (data) => {
+    loginAttemptedRef.current = true;
     dispatch(login(data));
   };
 

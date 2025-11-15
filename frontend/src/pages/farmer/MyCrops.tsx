@@ -68,10 +68,15 @@ const MyCrops: React.FC = () => {
   const handleAddCrop = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const quantityValue = parseFloat(formData.quantity.value);
       const cropData = {
         ...formData,
         quantity: {
-          value: parseFloat(formData.quantity.value),
+          value: quantityValue,
+          unit: formData.quantity.unit
+        },
+        availableQuantity: {
+          value: quantityValue,
           unit: formData.quantity.unit
         },
         price: {
@@ -95,10 +100,15 @@ const MyCrops: React.FC = () => {
     if (!editingCrop) return;
 
     try {
+      const quantityValue = parseFloat(formData.quantity.value);
       const cropData = {
         ...formData,
         quantity: {
-          value: parseFloat(formData.quantity.value),
+          value: quantityValue,
+          unit: formData.quantity.unit
+        },
+        availableQuantity: {
+          value: quantityValue,
           unit: formData.quantity.unit
         },
         price: {

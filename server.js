@@ -8,10 +8,10 @@ const path = require('path');
 const mongoose = require('mongoose');
 
 // Load environment variables
-dotenv.config({ path: './Backend/.env' });
+dotenv.config({ path: './.env' });
 
 // Import database connection FIRST (this will configure mongoose)
-const connectDatabase = require('./Backend/config/database');
+const connectDatabase = require('./backend/config/database');
 
 // Initialize express app
 const app = express();
@@ -55,18 +55,18 @@ function setupRoutes() {
   delete require.cache[require.resolve('./Database/SMSLogSchema')];
   
   // Import routes (this will also import controllers and models)
-  const authRoutes = require('./Backend/routes/authRoutes');
-  const userRoutes = require('./Backend/routes/userRoutes');
-  const farmerRoutes = require('./Backend/routes/farmerRoutes');
-  const buyerRoutes = require('./Backend/routes/buyerRoutes');
-  const adminRoutes = require('./Backend/routes/adminRoutes');
-  const cropRoutes = require('./Backend/routes/cropRoutes');
-  const requestRoutes = require('./Backend/routes/requestRoutes');
-  const ivrRoutes = require('./Backend/routes/ivrRoutes');
-  const smsRoutes = require('./Backend/routes/smsRoutes');
-  const notificationRoutes = require('./Backend/routes/notificationRoutes');
-  const companyRoutes = require('./Backend/routes/companyRoutes');
-  const errorHandler = require('./Backend/middleware/errorHandler');
+  const authRoutes = require('./backend/routes/authRoutes');
+  const userRoutes = require('./backend/routes/userRoutes');
+  const farmerRoutes = require('./backend/routes/farmerRoutes');
+  const buyerRoutes = require('./backend/routes/buyerRoutes');
+  const adminRoutes = require('./backend/routes/adminRoutes');
+  const cropRoutes = require('./backend/routes/cropRoutes');
+  const requestRoutes = require('./backend/routes/requestRoutes');
+  const ivrRoutes = require('./backend/routes/ivrRoutes');
+  const smsRoutes = require('./backend/routes/smsRoutes');
+  const notificationRoutes = require('./backend/routes/notificationRoutes');
+  const companyRoutes = require('./backend/routes/companyRoutes');
+  const errorHandler = require('./backend/middleware/errorHandler');
 
   // API Routes
   app.use('/api/auth', authRoutes);

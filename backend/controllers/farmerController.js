@@ -1,6 +1,7 @@
 const Crop = require('../models/Crop');
 const Request = require('../models/Request');
 const CallLog = require('../models/CallLog');
+const User = require('../models/User');
 
 // @desc    Add new crop
 // @route   POST /api/farmers/crops
@@ -390,6 +391,75 @@ exports.getCallLogs = async (req, res, next) => {
       totalPages: Math.ceil(count / limit),
       currentPage: parseInt(page),
       data: callLogs
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get farmer profile
+// @route   GET /api/farmers/profile
+// @access  Private (Farmer)
+exports.getProfile = async (req, res, next) => {
+  try {
+    const farmer = await User.findById(req.user.id).select('-password -pin');
+
+    if (!farmer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Farmer not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: farmer
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update farmer profile
+// @route   PUT /api/farmers/profile
+// @access  Private (Farmer)
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const allowedUpdates = [
+      'name',
+      'email',
+      'location',
+      'farmerDetails',
+      'profilePicture'
+    ];
+
+    const updates = {};
+    Object.keys(req.body).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
+
+    const farmer = await User.findByIdAndUpdate(
+      req.user.id,
+      updates,
+      {
+        new: true,
+        runValidators: true
+      }
+    ).select('-password -pin');
+
+    if (!farmer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Farmer not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: farmer
     });
   } catch (error) {
     next(error);

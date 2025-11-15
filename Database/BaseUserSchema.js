@@ -1,6 +1,6 @@
 // Base User schema - contains only common authentication and contact fields
 // Role-specific data is stored in Farmer, Buyer, or Admin collections
-const { mongoose } = require('../Backend/config/database');
+const { mongoose } = require('../backend/config/database');
 
 const baseUserSchema = new mongoose.Schema({
   // Common fields for all users

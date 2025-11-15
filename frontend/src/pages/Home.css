@@ -10,7 +10,7 @@
 /* Header - Compact & Professional */
 .header {
   background: linear-gradient(135deg, #4CAF50, #388E3C);
-  color: white;
+  color: rgb(243, 243, 243);
   padding: 12px 0;
   position: fixed;
   top: 0;

@@ -1,5 +1,5 @@
 // Farmer collection - stores ALL farmer data (auth + farm details)
-const { mongoose } = require('../Backend/config/database');
+const { mongoose } = require('../backend/config/database');
 
 const farmerSchema = new mongoose.Schema({
   // Authentication fields

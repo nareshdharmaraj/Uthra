@@ -1,5 +1,5 @@
 // Buyer collection - stores ALL buyer data (auth + business details)
-const { mongoose } = require('../Backend/config/database');
+const { mongoose } = require('../backend/config/database');
 
 const buyerSchema = new mongoose.Schema({
   // Authentication fields

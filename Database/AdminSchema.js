@@ -1,5 +1,5 @@
 // Admin collection - stores ALL admin data (auth + permissions)
-const { mongoose } = require('../Backend/config/database');
+const { mongoose } = require('../backend/config/database');
 
 const adminSchema = new mongoose.Schema({
   // Authentication fields
