@@ -321,6 +321,30 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
+.stat-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.stat-card h3 {
+  font-size: 14px;
+  margin: 8px 0 4px 0;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+.stat-card:hover h3 {
+  opacity: 1;
+  color: #2E7D32;
+}
+
 .stat-number {
   display: block;
   font-size: 28px;

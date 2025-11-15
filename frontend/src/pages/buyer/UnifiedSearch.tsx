@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { searchFarmers, fetchFarmerDetails, clearSelectedFarmer } from '../../features/buyer/buyerSlice';
-import { searchCrops, browseCrops } from '../../services/buyerService';
+import { searchCrops, browseCrops, createRequest } from '../../services/buyerService';
 import './UnifiedSearch.css';
 
 interface Crop {
@@ -16,7 +16,7 @@ interface Crop {
   availableFrom: string;
   availableTo: string;
   pickupLocation: { village?: string; district?: string };
-  farmer: { _id: string; name: string; mobile: string };
+  farmer: { _id: string; name: string; mobile: string } | null;
   viewCount?: number;
   requestCount?: number;
 }
@@ -52,6 +52,11 @@ const UnifiedSearch: React.FC = () => {
   const [page, setPage] = useState(1);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestQuantity, setRequestQuantity] = useState('');
+  const [offeredPrice, setOfferedPrice] = useState('');
+  const [buyerNote, setBuyerNote] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
   useEffect(() => {
     handleSearch();
@@ -143,6 +148,52 @@ const UnifiedSearch: React.FC = () => {
   const handleViewCrop = (crop: Crop) => {
     setSelectedCrop(crop);
     setShowDetailModal(true);
+  };
+
+  const handleSendRequest = () => {
+    setShowDetailModal(false);
+    setShowRequestModal(true);
+    if (selectedCrop) {
+      setRequestQuantity(selectedCrop.quantity.value.toString());
+      setOfferedPrice(selectedCrop.price.value.toString());
+    }
+  };
+
+  const handleContactFarmer = () => {
+    if (selectedCrop?.farmer?.mobile) {
+      window.open(`tel:${selectedCrop.farmer.mobile}`, '_self');
+    } else {
+      alert('Farmer contact information not available');
+    }
+  };
+
+  const handleSubmitRequest = async () => {
+    if (!selectedCrop) return;
+
+    if (!requestQuantity || !offeredPrice) {
+      alert('Please fill in quantity and offered price');
+      return;
+    }
+
+    try {
+      setIsSubmittingRequest(true);
+      await createRequest({
+        cropId: selectedCrop._id,
+        requestedQuantity: parseFloat(requestQuantity),
+        offeredPrice: parseFloat(offeredPrice),
+        buyerNote
+      });
+      alert('Request sent successfully!');
+      setShowRequestModal(false);
+      setRequestQuantity('');
+      setOfferedPrice('');
+      setBuyerNote('');
+    } catch (error: any) {
+      console.error('Send request error:', error);
+      alert(error.response?.data?.message || 'Failed to send request');
+    } finally {
+      setIsSubmittingRequest(false);
+    }
   };
 
   const handleCloseModal = () => {
@@ -317,7 +368,7 @@ const UnifiedSearch: React.FC = () => {
                         </div>
                         {crop.quality && <p><strong>Quality:</strong> <span className="quality-badge">{crop.quality}</span></p>}
                         <p><strong>Location:</strong> {crop.pickupLocation.village}, {crop.pickupLocation.district}</p>
-                        <p><strong>Farmer:</strong> {crop.farmer.name}</p>
+                        <p><strong>Farmer:</strong> {crop.farmer?.name || 'N/A'}</p>
                         <p><strong>Available until:</strong> {formatDate(crop.availableTo)}</p>
                         <div className="card-stats">
                           <span>👁️ {crop.viewCount || 0}</span>
@@ -517,12 +568,75 @@ const UnifiedSearch: React.FC = () => {
               </div>
               <div className="detail-section">
                 <h4>Farmer Details</h4>
-                <p><strong>Name:</strong> {selectedCrop.farmer.name}</p>
-                <p><strong>Mobile:</strong> {selectedCrop.farmer.mobile}</p>
+                {selectedCrop.farmer ? (
+                  <>
+                    <p><strong>Name:</strong> {selectedCrop.farmer.name}</p>
+                    <p><strong>Mobile:</strong> {selectedCrop.farmer.mobile}</p>
+                  </>
+                ) : (
+                  <p>Farmer information not available</p>
+                )}
               </div>
               <div className="modal-actions">
-                <button className="btn-request">Send Request</button>
-                <button className="btn-contact">Contact Farmer</button>
+                <button className="btn-request" onClick={handleSendRequest}>Send Request</button>
+                <button className="btn-contact" onClick={handleContactFarmer} disabled={!selectedCrop?.farmer?.mobile}>Contact Farmer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRequestModal && selectedCrop && (
+        <div className="modal-overlay" onClick={() => setShowRequestModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Send Request for {selectedCrop.name}</h3>
+              <button className="close-btn" onClick={() => setShowRequestModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Requested Quantity</label>
+                <div className="input-with-unit">
+                  <input
+                    type="number"
+                    value={requestQuantity}
+                    onChange={(e) => setRequestQuantity(e.target.value)}
+                    placeholder="Enter quantity"
+                  />
+                  <span className="unit">{selectedCrop.quantity.unit}</span>
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Offered Price (per {selectedCrop.price.unit})</label>
+                <div className="input-with-unit">
+                  <span className="currency">₹</span>
+                  <input
+                    type="number"
+                    value={offeredPrice}
+                    onChange={(e) => setOfferedPrice(e.target.value)}
+                    placeholder="Enter price"
+                  />
+                </div>
+                <small>Current price: ₹{selectedCrop.price.value}/{selectedCrop.price.unit}</small>
+              </div>
+              <div className="form-group">
+                <label>Note to Farmer (Optional)</label>
+                <textarea
+                  value={buyerNote}
+                  onChange={(e) => setBuyerNote(e.target.value)}
+                  placeholder="Add any special requirements or notes..."
+                  rows={3}
+                />
+              </div>
+              <div className="modal-actions">
+                <button 
+                  className="btn-submit" 
+                  onClick={handleSubmitRequest}
+                  disabled={isSubmittingRequest}
+                >
+                  {isSubmittingRequest ? 'Sending...' : 'Send Request'}
+                </button>
+                <button className="btn-cancel" onClick={() => setShowRequestModal(false)}>Cancel</button>
               </div>
             </div>
           </div>

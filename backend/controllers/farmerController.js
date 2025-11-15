@@ -38,8 +38,8 @@ exports.getMyCrops = async (req, res, next) => {
 
     const crops = await Crop.find(query)
       .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
 
     const count = await Crop.countDocuments(query);
 
@@ -150,17 +150,17 @@ exports.deleteCrop = async (req, res, next) => {
 // @access  Private (Farmer)
 exports.getMyRequests = async (req, res, next) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 100 } = req.query;
 
     const query = { farmer: req.user.id };
     if (status) query.status = status;
 
     const requests = await Request.find(query)
       .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
       .populate('buyer', 'name mobile location')
-      .populate('crop', 'name category');
+      .populate('crop', 'name category price quantity');
 
     const count = await Request.countDocuments(query);
 
@@ -326,15 +326,32 @@ exports.getDashboardStats = async (req, res, next) => {
       farmer: req.user.id, 
       status: 'active' 
     });
+    const soldOutCrops = await Crop.countDocuments({ 
+      farmer: req.user.id, 
+      status: 'sold_out' 
+    });
+    const expiredCrops = await Crop.countDocuments({ 
+      farmer: req.user.id, 
+      status: 'expired' 
+    });
+
+    const totalRequests = await Request.countDocuments({
+      farmer: req.user.id
+    });
 
     const pendingRequests = await Request.countDocuments({
       farmer: req.user.id,
-      status: 'pending'
+      status: { $in: ['pending', 'viewed'] }
     });
 
     const acceptedRequests = await Request.countDocuments({
       farmer: req.user.id,
-      status: 'farmer_accepted'
+      status: { $in: ['farmer_accepted', 'buyer_accepted', 'confirmed'] }
+    });
+
+    const counteredRequests = await Request.countDocuments({
+      farmer: req.user.id,
+      status: 'farmer_countered'
     });
 
     const recentRequests = await Request.find({
@@ -358,8 +375,12 @@ exports.getDashboardStats = async (req, res, next) => {
         stats: {
           totalCrops,
           activeCrops,
+          soldOutCrops,
+          expiredCrops,
+          totalRequests,
           pendingRequests,
-          acceptedRequests
+          acceptedRequests,
+          counteredRequests
         },
         recentRequests,
         recentCrops

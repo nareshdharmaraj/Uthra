@@ -188,6 +188,48 @@
   font-size: 14px;
 }
 
+.quantity-breakdown {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quantity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.quantity-item.available {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.quantity-item.booked {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.quantity-item.sold {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.quantity-label {
+  font-weight: 600;
+}
+
+.quantity-value {
+  font-weight: 700;
+}
+
 .organic-badge {
   background: linear-gradient(135deg, #81C784, #66BB6A);
   color: white;

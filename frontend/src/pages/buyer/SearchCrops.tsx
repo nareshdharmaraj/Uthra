@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { searchCrops, browseCrops } from '../../services/buyerService';
+import { searchCrops, browseCrops, createRequest } from '../../services/buyerService';
 import './SearchCrops.css';
 
 interface Crop {
@@ -26,9 +26,18 @@ interface Crop {
     _id: string;
     name: string;
     mobile: string;
-  };
+  } | null;
   viewCount?: number;
   requestCount?: number;
+  hasPendingRequestWithFarmer?: boolean;
+  availableQuantity?: {
+    value: number;
+    unit: string;
+  };
+  bookedQuantity?: {
+    value: number;
+    unit: string;
+  };
 }
 
 const SearchCrops: React.FC = () => {
@@ -54,6 +63,11 @@ const SearchCrops: React.FC = () => {
 
   const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestQuantity, setRequestQuantity] = useState('');
+  const [offeredPrice, setOfferedPrice] = useState('');
+  const [buyerNote, setBuyerNote] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
   useEffect(() => {
     handleBrowse();
@@ -80,7 +94,8 @@ const SearchCrops: React.FC = () => {
         totalPages: response.totalPages
       });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch crops');
+      console.error('Browse crops error:', err);
+      setError(err.message || err.response?.data?.message || 'Failed to fetch crops');
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +124,8 @@ const SearchCrops: React.FC = () => {
         totalPages: response.totalPages
       });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to search crops');
+      console.error('Search crops error:', err);
+      setError(err.message || err.response?.data?.message || 'Failed to search crops');
     } finally {
       setIsLoading(false);
     }
@@ -141,10 +157,56 @@ const SearchCrops: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric',
+      year: 'numeric',
       month: 'short',
-      year: 'numeric'
+      day: 'numeric'
     });
+  };
+
+  const handleSendRequest = () => {
+    setShowCropModal(false);
+    setShowRequestModal(true);
+    if (selectedCrop) {
+      setRequestQuantity(selectedCrop.quantity.value.toString());
+      setOfferedPrice(selectedCrop.price.value.toString());
+    }
+  };
+
+  const handleContactFarmer = () => {
+    if (selectedCrop?.farmer?.mobile) {
+      window.open(`tel:${selectedCrop.farmer.mobile}`, '_self');
+    } else {
+      alert('Farmer contact information not available');
+    }
+  };
+
+  const handleSubmitRequest = async () => {
+    if (!selectedCrop) return;
+
+    if (!requestQuantity || !offeredPrice) {
+      alert('Please fill in quantity and offered price');
+      return;
+    }
+
+    try {
+      setIsSubmittingRequest(true);
+      await createRequest({
+        cropId: selectedCrop._id,
+        requestedQuantity: parseFloat(requestQuantity),
+        offeredPrice: parseFloat(offeredPrice),
+        buyerNote
+      });
+      alert('Request sent successfully!');
+      setShowRequestModal(false);
+      setRequestQuantity('');
+      setOfferedPrice('');
+      setBuyerNote('');
+    } catch (error: any) {
+      console.error('Send request error:', error);
+      alert(error.response?.data?.message || 'Failed to send request');
+    } finally {
+      setIsSubmittingRequest(false);
+    }
   };
 
   return (
@@ -246,9 +308,14 @@ const SearchCrops: React.FC = () => {
                     <div className="price-info">
                       <span className="price">₹{crop.price.value}/{crop.price.unit}</span>
                       <span className="quantity">
-                        {crop.quantity.value} {crop.quantity.unit} available
+                        {crop.availableQuantity?.value || crop.quantity.value} {crop.quantity.unit} available
                       </span>
                     </div>
+                    {crop.hasPendingRequestWithFarmer && (
+                      <div className="pending-request-note">
+                        ℹ️ You have a pending request with this farmer
+                      </div>
+                    )}
                     {crop.quality && (
                       <p>
                         <strong>Quality:</strong>{' '}
@@ -260,7 +327,7 @@ const SearchCrops: React.FC = () => {
                       {crop.pickupLocation.district && `, ${crop.pickupLocation.district}`}
                     </p>
                     <p>
-                      <strong>Farmer:</strong> {crop.farmer.name}
+                      <strong>Farmer:</strong> {crop.farmer?.name || 'N/A'}
                     </p>
                     <p>
                       <strong>Available until:</strong> {formatDate(crop.availableTo)}
@@ -380,13 +447,76 @@ const SearchCrops: React.FC = () => {
 
               <div className="detail-section">
                 <h4>Farmer Details</h4>
-                <p><strong>Name:</strong> {selectedCrop.farmer.name}</p>
-                <p><strong>Mobile:</strong> {selectedCrop.farmer.mobile}</p>
+                {selectedCrop.farmer ? (
+                  <>
+                    <p><strong>Name:</strong> {selectedCrop.farmer.name}</p>
+                    <p><strong>Mobile:</strong> {selectedCrop.farmer.mobile}</p>
+                  </>
+                ) : (
+                  <p>Farmer information not available</p>
+                )}
               </div>
 
               <div className="modal-actions">
-                <button className="btn-request">Send Request</button>
-                <button className="btn-contact">Contact Farmer</button>
+                <button className="btn-request" onClick={handleSendRequest}>Send Request</button>
+                <button className="btn-contact" onClick={handleContactFarmer} disabled={!selectedCrop?.farmer?.mobile}>Contact Farmer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRequestModal && selectedCrop && (
+        <div className="modal-overlay" onClick={() => setShowRequestModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Send Request for {selectedCrop.name}</h3>
+              <button className="close-btn" onClick={() => setShowRequestModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Requested Quantity</label>
+                <div className="input-with-unit">
+                  <input
+                    type="number"
+                    value={requestQuantity}
+                    onChange={(e) => setRequestQuantity(e.target.value)}
+                    placeholder="Enter quantity"
+                  />
+                  <span className="unit">{selectedCrop.quantity.unit}</span>
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Offered Price (per {selectedCrop.price.unit})</label>
+                <div className="input-with-unit">
+                  <span className="currency">₹</span>
+                  <input
+                    type="number"
+                    value={offeredPrice}
+                    onChange={(e) => setOfferedPrice(e.target.value)}
+                    placeholder="Enter price"
+                  />
+                </div>
+                <small>Current price: ₹{selectedCrop.price.value}/{selectedCrop.price.unit}</small>
+              </div>
+              <div className="form-group">
+                <label>Note to Farmer (Optional)</label>
+                <textarea
+                  value={buyerNote}
+                  onChange={(e) => setBuyerNote(e.target.value)}
+                  placeholder="Add any special requirements or notes..."
+                  rows={3}
+                />
+              </div>
+              <div className="modal-actions">
+                <button 
+                  className="btn-submit" 
+                  onClick={handleSubmitRequest}
+                  disabled={isSubmittingRequest}
+                >
+                  {isSubmittingRequest ? 'Sending...' : 'Send Request'}
+                </button>
+                <button className="btn-cancel" onClick={() => setShowRequestModal(false)}>Cancel</button>
               </div>
             </div>
           </div>

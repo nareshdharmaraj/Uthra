@@ -15,10 +15,13 @@ import {
 const storedUser = authService.getCurrentUser();
 const storedToken = authService.getToken();
 
+// Verify that both token and user exist for authentication
+const isValidAuth = !!(storedToken && storedUser);
+
 const initialState: AuthState = {
-  user: storedUser,
-  token: storedToken,
-  isAuthenticated: !!storedToken,
+  user: isValidAuth ? storedUser : null,
+  token: isValidAuth ? storedToken : null,
+  isAuthenticated: isValidAuth,
   isLoading: false,
   error: null,
   registrationStage: 0,

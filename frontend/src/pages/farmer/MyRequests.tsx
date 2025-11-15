@@ -22,8 +22,15 @@ interface Request {
     value: number;
     unit: string;
   };
-  status: string;
-  message?: string;
+  status: 'pending' | 'viewed' | 'farmer_accepted' | 'farmer_rejected' | 'farmer_countered' | 'buyer_accepted' | 'buyer_rejected' | 'confirmed' | 'in_transit' | 'completed' | 'cancelled' | 'expired';
+  buyerNote?: string;
+  farmerNote?: string;
+  counterOffer?: {
+    price: { value: number; unit: string };
+    quantity?: { value: number; unit: string };
+    note?: string;
+    offeredAt?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -99,16 +106,29 @@ const MyRequests: React.FC = () => {
 
   const filteredRequests = requests.filter(request => {
     if (filter === 'all') return true;
+    if (filter === 'accepted') {
+      return request.status === 'farmer_accepted' || request.status === 'buyer_accepted' || request.status === 'confirmed';
+    }
+    if (filter === 'farmer_countered') {
+      return request.status === 'farmer_countered';
+    }
     return request.status === filter;
   });
 
   const getStatusBadge = (status: string) => {
     const badges: any = {
       pending: { text: 'Pending', color: '#FF9800' },
-      accepted: { text: 'Accepted', color: '#4CAF50' },
-      rejected: { text: 'Rejected', color: '#f44336' },
-      counter_offered: { text: 'Counter Offered', color: '#2196F3' },
-      completed: { text: 'Completed', color: '#9C27B0' }
+      viewed: { text: 'Viewed', color: '#FF9800' },
+      farmer_accepted: { text: 'You Accepted', color: '#4CAF50' },
+      buyer_accepted: { text: 'Buyer Accepted', color: '#4CAF50' },
+      confirmed: { text: 'Confirmed', color: '#4CAF50' },
+      farmer_rejected: { text: 'You Rejected', color: '#f44336' },
+      buyer_rejected: { text: 'Buyer Rejected', color: '#f44336' },
+      farmer_countered: { text: 'Counter Offer Sent', color: '#2196F3' },
+      in_transit: { text: 'In Transit', color: '#9C27B0' },
+      completed: { text: 'Completed', color: '#9C27B0' },
+      cancelled: { text: 'Cancelled', color: '#757575' },
+      expired: { text: 'Expired', color: '#757575' }
     };
     const badge = badges[status] || badges.pending;
     return <span className="status-badge" style={{ backgroundColor: badge.color }}>{badge.text}</span>;
@@ -150,13 +170,13 @@ const MyRequests: React.FC = () => {
           className={`filter-btn ${filter === 'accepted' ? 'active' : ''}`}
           onClick={() => setFilter('accepted')}
         >
-          Accepted ({requests.filter(r => r.status === 'accepted').length})
+          Accepted ({requests.filter(r => r.status === 'farmer_accepted' || r.status === 'buyer_accepted' || r.status === 'confirmed').length})
         </button>
         <button 
-          className={`filter-btn ${filter === 'counter_offered' ? 'active' : ''}`}
-          onClick={() => setFilter('counter_offered')}
+          className={`filter-btn ${filter === 'farmer_countered' ? 'active' : ''}`}
+          onClick={() => setFilter('farmer_countered')}
         >
-          Counter Offers ({requests.filter(r => r.status === 'counter_offered').length})
+          Counter Offers ({requests.filter(r => r.status === 'farmer_countered').length})
         </button>
       </div>
 
@@ -185,11 +205,11 @@ const MyRequests: React.FC = () => {
                   <h4>Buyer Information</h4>
                   <div className="request-info">
                     <span className="request-label">Name:</span>
-                    <span className="request-value">{request.buyer.name}</span>
+                    <span className="request-value">{request.buyer?.name || 'N/A'}</span>
                   </div>
                   <div className="request-info">
                     <span className="request-label">Mobile:</span>
-                    <span className="request-value">{request.buyer.mobile}</span>
+                    <span className="request-value">{request.buyer?.mobile || 'N/A'}</span>
                   </div>
                 </div>
 
@@ -203,13 +223,38 @@ const MyRequests: React.FC = () => {
                     <span className="request-label">Offered Price:</span>
                     <span className="request-value">₹{request.offeredPrice.value} {request.offeredPrice.unit}</span>
                   </div>
-                  {request.message && (
+                  {request.buyerNote && (
                     <div className="request-message">
                       <span className="request-label">Message:</span>
-                      <p>{request.message}</p>
+                      <p>{request.buyerNote}</p>
                     </div>
                   )}
                 </div>
+
+                {request.counterOffer && (
+                  <div className="request-section counter-offer-section">
+                    <h4>Your Counter Offer</h4>
+                    <div className="request-info">
+                      <span className="request-label">Price:</span>
+                      <span className="request-value">₹{request.counterOffer.price.value} {request.counterOffer.price.unit}</span>
+                    </div>
+                    {request.counterOffer.quantity && (
+                      <div className="request-info">
+                        <span className="request-label">Quantity:</span>
+                        <span className="request-value">{request.counterOffer.quantity.value} {request.counterOffer.quantity.unit}</span>
+                      </div>
+                    )}
+                    {request.counterOffer.note && (
+                      <div className="request-message">
+                        <span className="request-label">Note:</span>
+                        <p>{request.counterOffer.note}</p>
+                      </div>
+                    )}
+                    <div className="request-date">
+                      Offered on: {request.counterOffer.offeredAt ? formatDate(request.counterOffer.offeredAt) : 'Recently'}
+                    </div>
+                  </div>
+                )}
 
                 <div className="request-date">
                   Requested on: {formatDate(request.createdAt)}
@@ -239,19 +284,19 @@ const MyRequests: React.FC = () => {
                 </div>
               )}
 
-              {request.status === 'accepted' && (
+              {(request.status === 'farmer_accepted' || request.status === 'buyer_accepted' || request.status === 'confirmed') && (
                 <div className="request-status-message success">
                   ✓ Request accepted! Contact the buyer to proceed with the transaction.
                 </div>
               )}
 
-              {request.status === 'rejected' && (
+              {(request.status === 'farmer_rejected' || request.status === 'buyer_rejected') && (
                 <div className="request-status-message error">
                   ✗ Request rejected
                 </div>
               )}
 
-              {request.status === 'counter_offered' && (
+              {request.status === 'farmer_countered' && (
                 <div className="request-status-message info">
                   💰 Counter offer sent. Waiting for buyer's response.
                 </div>

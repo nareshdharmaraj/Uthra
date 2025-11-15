@@ -10,6 +10,18 @@ interface Crop {
     value: number;
     unit: string;
   };
+  availableQuantity?: {
+    value: number;
+    unit: string;
+  };
+  bookedQuantity?: {
+    value: number;
+    unit: string;
+  };
+  soldQuantity?: {
+    value: number;
+    unit: string;
+  };
   price: {
     value: number;
     unit: string;
@@ -56,10 +68,11 @@ const MyCrops: React.FC = () => {
   const fetchCrops = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/farmers/crops');
+      const response = await api.get('/farmers/crops?limit=1000');
       setCrops(response.data.data || []);
     } catch (error) {
       console.error('Error fetching crops:', error);
+      alert('Failed to fetch crops. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -190,9 +203,9 @@ const MyCrops: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const badges: any = {
       active: { text: 'Active', color: '#4CAF50' },
-      reserved: { text: 'Reserved', color: '#FF9800' },
-      sold: { text: 'Sold', color: '#2196F3' },
-      removed: { text: 'Removed', color: '#9E9E9E' }
+      sold_out: { text: 'Sold Out', color: '#FF9800' },
+      expired: { text: 'Expired', color: '#9E9E9E' },
+      removed: { text: 'Removed', color: '#757575' }
     };
     const badge = badges[status] || badges.active;
     return <span className="status-badge" style={{ backgroundColor: badge.color }}>{badge.text}</span>;
@@ -224,16 +237,22 @@ const MyCrops: React.FC = () => {
           Active ({crops.filter(c => c.status === 'active').length})
         </button>
         <button 
-          className={`filter-btn ${filter === 'reserved' ? 'active' : ''}`}
-          onClick={() => setFilter('reserved')}
+          className={`filter-btn ${filter === 'sold_out' ? 'active' : ''}`}
+          onClick={() => setFilter('sold_out')}
         >
-          Reserved ({crops.filter(c => c.status === 'reserved').length})
+          Sold Out ({crops.filter(c => c.status === 'sold_out').length})
         </button>
         <button 
-          className={`filter-btn ${filter === 'sold' ? 'active' : ''}`}
-          onClick={() => setFilter('sold')}
+          className={`filter-btn ${filter === 'expired' ? 'active' : ''}`}
+          onClick={() => setFilter('expired')}
         >
-          Sold ({crops.filter(c => c.status === 'sold').length})
+          Expired ({crops.filter(c => c.status === 'expired').length})
+        </button>
+        <button 
+          className={`filter-btn ${filter === 'removed' ? 'active' : ''}`}
+          onClick={() => setFilter('removed')}
+        >
+          Removed ({crops.filter(c => c.status === 'removed').length})
         </button>
       </div>
 
@@ -262,9 +281,31 @@ const MyCrops: React.FC = () => {
                   <span className="crop-value">{crop.category}</span>
                 </div>
                 <div className="crop-info">
-                  <span className="crop-label">Quantity:</span>
+                  <span className="crop-label">Total Quantity:</span>
                   <span className="crop-value">{crop.quantity.value} {crop.quantity.unit}</span>
                 </div>
+                {(crop.availableQuantity || crop.bookedQuantity || crop.soldQuantity) && (
+                  <div className="quantity-breakdown">
+                    {crop.availableQuantity && (
+                      <div className="quantity-item available">
+                        <span className="quantity-label">Available:</span>
+                        <span className="quantity-value">{crop.availableQuantity.value} {crop.availableQuantity.unit}</span>
+                      </div>
+                    )}
+                    {crop.bookedQuantity && crop.bookedQuantity.value > 0 && (
+                      <div className="quantity-item booked">
+                        <span className="quantity-label">Booked:</span>
+                        <span className="quantity-value">{crop.bookedQuantity.value} {crop.bookedQuantity.unit}</span>
+                      </div>
+                    )}
+                    {crop.soldQuantity && crop.soldQuantity.value > 0 && (
+                      <div className="quantity-item sold">
+                        <span className="quantity-label">Sold:</span>
+                        <span className="quantity-value">{crop.soldQuantity.value} {crop.soldQuantity.unit}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="crop-info">
                   <span className="crop-label">Price:</span>
                   <span className="crop-value">₹{crop.price.value} {crop.price.unit}</span>

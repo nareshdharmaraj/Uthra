@@ -1,5 +1,8 @@
 const Crop = require('../models/Crop');
 const Request = require('../models/Request');
+const User = require('../models/User');
+const Buyer = require('../models/BuyerModel');
+const Farmer = require('../models/Farmer');
 
 // @desc    Browse all crops
 // @route   GET /api/buyers/crops
@@ -31,8 +34,8 @@ exports.browseCrops = async (req, res, next) => {
 
     const crops = await Crop.find(query)
       .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
       .populate('farmer', 'name location mobile');
 
     const count = await Crop.countDocuments(query);
@@ -110,7 +113,29 @@ exports.searchCrops = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)
-      .populate('farmer', 'name location');
+      .populate('farmer', 'name location mobile')
+      .lean();
+
+    // Check if buyer has existing requests with these farmers
+    const buyerId = req.user.id;
+    const farmerIds = [...new Set(crops.map(c => c.farmer?._id?.toString()).filter(Boolean))];
+    
+    const existingRequests = await Request.find({
+      buyer: buyerId,
+      farmer: { $in: farmerIds },
+      status: { $in: ['pending', 'viewed', 'farmer_accepted', 'farmer_countered', 'buyer_accepted', 'confirmed'] }
+    }).select('farmer crop').lean();
+
+    // Add booking info to crops
+    const cropsWithBookingInfo = crops.map(crop => {
+      const hasPendingRequest = existingRequests.some(req => 
+        req.farmer?.toString() === crop.farmer?._id?.toString()
+      );
+      return {
+        ...crop,
+        hasPendingRequestWithFarmer: hasPendingRequest
+      };
+    });
 
     const count = await Crop.countDocuments(query);
 
@@ -118,7 +143,9 @@ exports.searchCrops = async (req, res, next) => {
       success: true,
       count: crops.length,
       total: count,
-      data: crops
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(count / limit),
+      data: cropsWithBookingInfo
     });
   } catch (error) {
     next(error);
@@ -148,13 +175,19 @@ exports.createRequest = async (req, res, next) => {
       });
     }
 
-    // Create request
+    // Create request with proper structure
     const request = await Request.create({
       buyer: req.user.id,
       crop: cropId,
       farmer: crop.farmer,
-      requestedQuantity,
-      offeredPrice,
+      requestedQuantity: {
+        value: typeof requestedQuantity === 'number' ? requestedQuantity : requestedQuantity.value,
+        unit: requestedQuantity.unit || crop.quantity.unit
+      },
+      offeredPrice: {
+        value: typeof offeredPrice === 'number' ? offeredPrice : offeredPrice.value,
+        unit: offeredPrice.unit || crop.price.unit
+      },
       deliveryAddress: deliveryAddress || req.user.location,
       buyerNote,
       status: 'pending'
@@ -181,17 +214,17 @@ exports.createRequest = async (req, res, next) => {
 // @access  Private (Buyer)
 exports.getMyRequests = async (req, res, next) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 100 } = req.query;
 
     const query = { buyer: req.user.id };
     if (status) query.status = status;
 
     const requests = await Request.find(query)
       .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
       .populate('farmer', 'name mobile location')
-      .populate('crop', 'name category price');
+      .populate('crop', 'name category price quantity availableQuantity status');
 
     const count = await Request.countDocuments(query);
 
@@ -407,10 +440,8 @@ exports.rateFarmer = async (req, res, next) => {
 exports.getProfile = async (req, res, next) => {
   try {
     // Lazy load User model
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
-    const buyer = await User.findById(req.user.id).select('-password -pin');
+    const buyer = await Buyer.findById(req.user.id).select('-password -pin');
 
     if (!buyer) {
       return res.status(404).json({
@@ -447,8 +478,6 @@ exports.getProfile = async (req, res, next) => {
 exports.updateProfile = async (req, res, next) => {
   try {
     // Lazy load User model
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
     const {
       name,
@@ -457,7 +486,7 @@ exports.updateProfile = async (req, res, next) => {
       buyerDetails
     } = req.body;
 
-    const buyer = await User.findById(req.user.id);
+    const buyer = await Buyer.findById(req.user.id);
 
     if (!buyer) {
       return res.status(404).json({
@@ -494,8 +523,6 @@ exports.updateProfile = async (req, res, next) => {
 exports.addWantedCrop = async (req, res, next) => {
   try {
     // Lazy load User model
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
     console.log('Add Wanted Crop Request Body:', req.body);
     
@@ -511,7 +538,7 @@ exports.addWantedCrop = async (req, res, next) => {
       notes
     } = req.body;
 
-    const buyer = await User.findById(req.user.id);
+    const buyer = await Buyer.findById(req.user.id);
 
     if (!buyer) {
       return res.status(404).json({
@@ -522,17 +549,13 @@ exports.addWantedCrop = async (req, res, next) => {
 
     console.log('Buyer before adding crop:', {
       id: buyer._id,
-      hasBuyerDetails: !!buyer.buyerDetails,
-      hasWantedCrops: !!buyer.buyerDetails?.wantedCrops,
-      existingCropsCount: buyer.buyerDetails?.wantedCrops?.length || 0
+      hasWantedCrops: !!buyer.wantedCrops,
+      existingCropsCount: buyer.wantedCrops?.length || 0
     });
 
-    // Initialize buyerDetails if not exists
-    if (!buyer.buyerDetails) {
-      buyer.buyerDetails = {};
-    }
-    if (!buyer.buyerDetails.wantedCrops) {
-      buyer.buyerDetails.wantedCrops = [];
+    // Initialize wantedCrops if not exists
+    if (!buyer.wantedCrops) {
+      buyer.wantedCrops = [];
     }
 
     const newCrop = {
@@ -552,19 +575,19 @@ exports.addWantedCrop = async (req, res, next) => {
     console.log('New crop to add:', newCrop);
 
     // Add new wanted crop
-    buyer.buyerDetails.wantedCrops.push(newCrop);
+    buyer.wantedCrops.push(newCrop);
 
     await buyer.save();
 
     console.log('Buyer after save:', {
-      wantedCropsCount: buyer.buyerDetails.wantedCrops.length,
-      lastCrop: buyer.buyerDetails.wantedCrops[buyer.buyerDetails.wantedCrops.length - 1]
+      wantedCropsCount: buyer.wantedCrops.length,
+      lastCrop: buyer.wantedCrops[buyer.wantedCrops.length - 1]
     });
 
     res.status(201).json({
       success: true,
       message: 'Wanted crop added successfully',
-      data: buyer.buyerDetails.wantedCrops
+      data: buyer.wantedCrops
     });
   } catch (error) {
     console.error('Add Wanted Crop Error:', error);
@@ -578,10 +601,8 @@ exports.addWantedCrop = async (req, res, next) => {
 exports.updateWantedCrop = async (req, res, next) => {
   try {
     // Lazy load User model
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
-    const buyer = await User.findById(req.user.id);
+    const buyer = await Buyer.findById(req.user.id);
 
     if (!buyer) {
       return res.status(404).json({
@@ -590,7 +611,7 @@ exports.updateWantedCrop = async (req, res, next) => {
       });
     }
 
-    const wantedCrop = buyer.buyerDetails.wantedCrops.id(req.params.cropId);
+    const wantedCrop = buyer.wantedCrops.id(req.params.cropId);
 
     if (!wantedCrop) {
       return res.status(404).json({
@@ -622,10 +643,8 @@ exports.updateWantedCrop = async (req, res, next) => {
 exports.deleteWantedCrop = async (req, res, next) => {
   try {
     // Lazy load User model
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
-    const buyer = await User.findById(req.user.id);
+    const buyer = await Buyer.findById(req.user.id);
 
     if (!buyer) {
       return res.status(404).json({
@@ -634,7 +653,7 @@ exports.deleteWantedCrop = async (req, res, next) => {
       });
     }
 
-    buyer.buyerDetails.wantedCrops.id(req.params.cropId).remove();
+    buyer.wantedCrops.id(req.params.cropId).remove();
     await buyer.save();
 
     res.status(200).json({
@@ -652,10 +671,8 @@ exports.deleteWantedCrop = async (req, res, next) => {
 exports.getWantedCrops = async (req, res, next) => {
   try {
     // Lazy load User model
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
-    const buyer = await User.findById(req.user.id).select('buyerDetails.wantedCrops');
+    const buyer = await Buyer.findById(req.user.id).select('wantedCrops');
 
     if (!buyer) {
       return res.status(404).json({
@@ -665,13 +682,13 @@ exports.getWantedCrops = async (req, res, next) => {
     }
 
     console.log('Get Wanted Crops - Buyer ID:', req.user.id);
-    console.log('Get Wanted Crops - Has buyerDetails:', !!buyer.buyerDetails);
-    console.log('Get Wanted Crops - Wanted Crops Count:', buyer.buyerDetails?.wantedCrops?.length || 0);
-    console.log('Get Wanted Crops - Crops:', buyer.buyerDetails?.wantedCrops);
+    console.log('Get Wanted Crops - Wanted Crops Count:', buyer.wantedCrops?.length || 0);
+    console.log('Get Wanted Crops - Crops:', buyer.wantedCrops);
 
     res.status(200).json({
       success: true,
-      data: buyer.buyerDetails?.wantedCrops || []
+      total: buyer.wantedCrops?.length || 0,
+      data: buyer.wantedCrops || []
     });
   } catch (error) {
     console.error('Get Wanted Crops Error:', error);
@@ -685,8 +702,6 @@ exports.getWantedCrops = async (req, res, next) => {
 exports.searchFarmers = async (req, res, next) => {
   try {
     // Lazy load User model
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
     const { 
       searchTerm, 
@@ -713,12 +728,12 @@ exports.searchFarmers = async (req, res, next) => {
       ];
     }
 
-    // Location filters
-    if (district) query['location.district'] = district;
-    if (state) query['location.state'] = state;
+    // Location filters (case-insensitive)
+    if (district) query['location.district'] = { $regex: district, $options: 'i' };
+    if (state) query['location.state'] = { $regex: state, $options: 'i' };
     if (farmingType) query['farmerDetails.farmingType'] = farmingType;
 
-    let farmers = await User.find(query)
+    let farmers = await Farmer.find(query)
       .select('name mobile location farmerDetails createdAt')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
@@ -753,7 +768,7 @@ exports.searchFarmers = async (req, res, next) => {
       );
     }
 
-    const count = await User.countDocuments(query);
+    const count = await Farmer.countDocuments(query);
 
     res.status(200).json({
       success: true,
@@ -773,14 +788,8 @@ exports.searchFarmers = async (req, res, next) => {
 // @access  Private (Buyer)
 exports.getFarmerDetails = async (req, res, next) => {
   try {
-    // Lazy load User model
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
-    const farmer = await User.findOne({
-      _id: req.params.id,
-      role: 'farmer'
-    }).select('-password -pin');
+    const farmer = await Farmer.findById(req.params.id).select('-password -pin');
 
     if (!farmer) {
       return res.status(404).json({
@@ -813,10 +822,8 @@ exports.getFarmerDetails = async (req, res, next) => {
 // @access  Private (Buyer)
 exports.getSettings = async (req, res, next) => {
   try {
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
-    const buyer = await User.findById(req.user.id).select('buyerDetails.settings');
+    const buyer = await Buyer.findById(req.user.id).select('buyerDetails.settings');
 
     if (!buyer) {
       return res.status(404).json({
@@ -858,10 +865,8 @@ exports.getSettings = async (req, res, next) => {
 // @access  Private (Buyer)
 exports.updateNotificationSettings = async (req, res, next) => {
   try {
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
-    const buyer = await User.findById(req.user.id);
+    const buyer = await Buyer.findById(req.user.id);
 
     if (!buyer) {
       return res.status(404).json({
@@ -894,12 +899,10 @@ exports.updateNotificationSettings = async (req, res, next) => {
 // @access  Private (Buyer)
 exports.changePassword = async (req, res, next) => {
   try {
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
     const { currentPassword, newPassword } = req.body;
 
-    const buyer = await User.findById(req.user.id);
+    const buyer = await Buyer.findById(req.user.id);
 
     if (!buyer) {
       return res.status(404).json({
@@ -935,10 +938,8 @@ exports.changePassword = async (req, res, next) => {
 // @access  Private (Buyer)
 exports.updatePrivacySettings = async (req, res, next) => {
   try {
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
-    const buyer = await User.findById(req.user.id);
+    const buyer = await Buyer.findById(req.user.id);
 
     if (!buyer) {
       return res.status(404).json({
@@ -971,10 +972,8 @@ exports.updatePrivacySettings = async (req, res, next) => {
 // @access  Private (Buyer)
 exports.updateLanguageSettings = async (req, res, next) => {
   try {
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
-    const buyer = await User.findById(req.user.id);
+    const buyer = await Buyer.findById(req.user.id);
 
     if (!buyer) {
       return res.status(404).json({
@@ -1007,10 +1006,8 @@ exports.updateLanguageSettings = async (req, res, next) => {
 // @access  Private (Buyer)
 exports.exportData = async (req, res, next) => {
   try {
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
-    const buyer = await User.findById(req.user.id).select('-password -pin');
+    const buyer = await Buyer.findById(req.user.id).select('-password -pin');
     const requests = await Request.find({ buyer: req.user.id });
 
     const exportData = {
@@ -1032,11 +1029,9 @@ exports.exportData = async (req, res, next) => {
 // @access  Private (Buyer)
 exports.deleteAccount = async (req, res, next) => {
   try {
-    const getUserModel = () => require('../models/User');
-    const User = getUserModel();
     
     // Mark account as deleted instead of hard delete
-    const buyer = await User.findById(req.user.id);
+    const buyer = await Buyer.findById(req.user.id);
 
     if (!buyer) {
       return res.status(404).json({

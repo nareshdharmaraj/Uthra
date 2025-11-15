@@ -94,6 +94,47 @@ export const getCropDetails = async (cropId: string) => {
   return response.data;
 };
 
+// Request APIs
+export const createRequest = async (requestData: {
+  cropId: string;
+  requestedQuantity: number;
+  offeredPrice: number;
+  deliveryAddress?: any;
+  buyerNote?: string;
+}) => {
+  const response = await api.post('/buyers/requests', requestData);
+  return response.data;
+};
+
+export const getMyRequests = async (params?: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const queryParams = new URLSearchParams(
+    Object.entries(params || {})
+      .filter(([_, value]) => value !== undefined)
+      .map(([key, value]) => [key, String(value)])
+  );
+  const response = await api.get(`/buyers/requests?${queryParams}`);
+  return response.data;
+};
+
+export const getRequestDetails = async (requestId: string) => {
+  const response = await api.get(`/buyers/requests/${requestId}`);
+  return response.data;
+};
+
+export const acceptCounterOffer = async (requestId: string) => {
+  const response = await api.put(`/buyers/requests/${requestId}/accept`);
+  return response.data;
+};
+
+export const cancelRequest = async (requestId: string) => {
+  const response = await api.put(`/buyers/requests/${requestId}/cancel`);
+  return response.data;
+};
+
 const buyerService = {
   getBuyerProfile,
   updateBuyerProfile,
@@ -106,7 +147,12 @@ const buyerService = {
   getDashboardStats,
   browseCrops,
   searchCrops,
-  getCropDetails
+  getCropDetails,
+  createRequest,
+  getMyRequests,
+  getRequestDetails,
+  acceptCounterOffer,
+  cancelRequest
 };
 
 export default buyerService;

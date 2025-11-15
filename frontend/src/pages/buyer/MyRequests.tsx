@@ -19,9 +19,15 @@ interface Request {
   };
   requestedQuantity: { value: number; unit: string };
   offeredPrice: { value: number; unit: string };
-  message?: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'counter-offered' | 'cancelled' | 'completed';
-  counterOffer?: { price: { value: number; unit: string }; message?: string };
+  buyerNote?: string;
+  farmerNote?: string;
+  status: 'pending' | 'viewed' | 'farmer_accepted' | 'farmer_rejected' | 'farmer_countered' | 'buyer_accepted' | 'buyer_rejected' | 'confirmed' | 'in_transit' | 'completed' | 'cancelled' | 'expired';
+  counterOffer?: { 
+    price: { value: number; unit: string }; 
+    quantity?: { value: number; unit: string };
+    note?: string;
+    offeredAt?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +49,22 @@ const MyRequests: React.FC = () => {
   const filterRequests = () => {
     if (selectedStatus === 'all') {
       setFilteredRequests(requests);
+    } else if (selectedStatus === 'accepted') {
+      setFilteredRequests(requests.filter(r => 
+        r.status === 'farmer_accepted' || 
+        r.status === 'buyer_accepted' || 
+        r.status === 'confirmed'
+      ));
+    } else if (selectedStatus === 'pending') {
+      setFilteredRequests(requests.filter(r => r.status === 'pending' || r.status === 'viewed'));
+    } else if (selectedStatus === 'farmer_countered') {
+      setFilteredRequests(requests.filter(r => r.status === 'farmer_countered'));
+    } else if (selectedStatus === 'rejected') {
+      setFilteredRequests(requests.filter(r => r.status === 'farmer_rejected' || r.status === 'buyer_rejected'));
+    } else if (selectedStatus === 'cancelled') {
+      setFilteredRequests(requests.filter(r => r.status === 'cancelled' || r.status === 'expired'));
+    } else if (selectedStatus === 'completed') {
+      setFilteredRequests(requests.filter(r => r.status === 'completed' || r.status === 'in_transit'));
     } else {
       setFilteredRequests(requests.filter(req => req.status === selectedStatus));
     }
@@ -106,17 +128,38 @@ const MyRequests: React.FC = () => {
   const getStatusBadgeClass = (status: string) => {
     const statusClasses: { [key: string]: string } = {
       pending: 'status-pending',
-      accepted: 'status-accepted',
+      viewed: 'status-pending',
+      farmer_accepted: 'status-accepted',
+      buyer_accepted: 'status-accepted',
+      confirmed: 'status-accepted',
+      farmer_rejected: 'status-rejected',
+      buyer_rejected: 'status-rejected',
       rejected: 'status-rejected',
-      'counter-offered': 'status-counter',
+      farmer_countered: 'status-counter',
       cancelled: 'status-cancelled',
-      completed: 'status-completed'
+      completed: 'status-completed',
+      in_transit: 'status-completed',
+      expired: 'status-cancelled'
     };
-    return statusClasses[status] || '';
+    return statusClasses[status] || 'status-pending';
   };
 
   const getStatusLabel = (status: string) => {
-    return status.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const labels: { [key: string]: string } = {
+      pending: 'Pending',
+      viewed: 'Viewed',
+      farmer_accepted: 'Accepted by Farmer',
+      farmer_rejected: 'Rejected by Farmer',
+      farmer_countered: 'Counter Offer',
+      buyer_accepted: 'Accepted by You',
+      buyer_rejected: 'Rejected by You',
+      confirmed: 'Confirmed',
+      in_transit: 'In Transit',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+      expired: 'Expired'
+    };
+    return labels[status] || status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
   const formatDate = (dateString: string) => {
@@ -136,12 +179,12 @@ const MyRequests: React.FC = () => {
   const getRequestStats = () => {
     const stats = {
       all: requests.length,
-      pending: requests.filter(r => r.status === 'pending').length,
-      accepted: requests.filter(r => r.status === 'accepted').length,
-      'counter-offered': requests.filter(r => r.status === 'counter-offered').length,
-      rejected: requests.filter(r => r.status === 'rejected').length,
-      cancelled: requests.filter(r => r.status === 'cancelled').length,
-      completed: requests.filter(r => r.status === 'completed').length
+      pending: requests.filter(r => r.status === 'pending' || r.status === 'viewed').length,
+      accepted: requests.filter(r => r.status === 'farmer_accepted' || r.status === 'buyer_accepted' || r.status === 'confirmed').length,
+      farmer_countered: requests.filter(r => r.status === 'farmer_countered').length,
+      rejected: requests.filter(r => r.status === 'farmer_rejected' || r.status === 'buyer_rejected').length,
+      cancelled: requests.filter(r => r.status === 'cancelled' || r.status === 'expired').length,
+      completed: requests.filter(r => r.status === 'completed' || r.status === 'in_transit').length
     };
     return stats;
   };
@@ -179,10 +222,10 @@ const MyRequests: React.FC = () => {
           Pending ({stats.pending})
         </button>
         <button
-          className={selectedStatus === 'counter-offered' ? 'active' : ''}
-          onClick={() => setSelectedStatus('counter-offered')}
+          className={selectedStatus === 'farmer_countered' ? 'active' : ''}
+          onClick={() => setSelectedStatus('farmer_countered')}
         >
-          Counter Offers ({stats['counter-offered']})
+          Counter Offers ({stats.farmer_countered})
         </button>
         <button
           className={selectedStatus === 'accepted' ? 'active' : ''}
@@ -222,8 +265,8 @@ const MyRequests: React.FC = () => {
                 <div key={request._id} className="request-card">
                   <div className="card-header">
                     <div className="crop-info">
-                      <h3>{request.crop.name}</h3>
-                      <span className="category">{request.crop.category}</span>
+                      <h3>{request.crop?.name || 'Crop N/A'}</h3>
+                      <span className="category">{request.crop?.category || 'N/A'}</span>
                     </div>
                     <span className={`status-badge ${getStatusBadgeClass(request.status)}`}>
                       {getStatusLabel(request.status)}
@@ -233,10 +276,10 @@ const MyRequests: React.FC = () => {
                   <div className="card-body">
                     <div className="info-row">
                       <div className="info-item">
-                        <strong>Farmer:</strong> {request.farmer.name}
+                        <strong>Farmer:</strong> {request.farmer?.name || 'N/A'}
                       </div>
                       <div className="info-item">
-                        <strong>Location:</strong> {request.farmer.location?.district || 'N/A'}
+                        <strong>Location:</strong> {request.farmer?.location?.district || 'N/A'}
                       </div>
                     </div>
 
@@ -252,7 +295,7 @@ const MyRequests: React.FC = () => {
                     {request.counterOffer && (
                       <div className="counter-offer-section">
                         <strong>Counter Offer:</strong> ₹{request.counterOffer.price.value}/{request.counterOffer.price.unit}
-                        {request.counterOffer.message && <p className="counter-message">{request.counterOffer.message}</p>}
+                        {request.counterOffer.note && <p className="counter-message">{request.counterOffer.note}</p>}
                       </div>
                     )}
 
@@ -265,7 +308,7 @@ const MyRequests: React.FC = () => {
                     <button className="btn-view" onClick={() => handleViewDetails(request)}>
                       View Details
                     </button>
-                    {request.status === 'counter-offered' && (
+                    {request.status === 'farmer_countered' && (
                       <button 
                         className="btn-accept" 
                         onClick={() => handleAcceptCounterOffer(request._id)}
@@ -273,7 +316,7 @@ const MyRequests: React.FC = () => {
                         Accept Counter Offer
                       </button>
                     )}
-                    {(request.status === 'pending' || request.status === 'counter-offered') && (
+                    {(request.status === 'pending' || request.status === 'farmer_countered') && (
                       <button 
                         className="btn-cancel" 
                         onClick={() => handleCancelRequest(request._id)}
@@ -328,10 +371,10 @@ const MyRequests: React.FC = () => {
 
               <div className="detail-section">
                 <h4>Crop Information</h4>
-                <p><strong>Name:</strong> {selectedRequest.crop.name}</p>
-                <p><strong>Category:</strong> {selectedRequest.crop.category}</p>
-                <p><strong>Farmer's Price:</strong> ₹{selectedRequest.crop.price.value}/{selectedRequest.crop.price.unit}</p>
-                {selectedRequest.crop.quantity && (
+                <p><strong>Name:</strong> {selectedRequest.crop?.name || 'N/A'}</p>
+                <p><strong>Category:</strong> {selectedRequest.crop?.category || 'N/A'}</p>
+                <p><strong>Farmer's Price:</strong> ₹{selectedRequest.crop?.price?.value || 0}/{selectedRequest.crop?.price?.unit || 'unit'}</p>
+                {selectedRequest.crop?.quantity && (
                   <p><strong>Available Quantity:</strong> {selectedRequest.crop.quantity.value} {selectedRequest.crop.quantity.unit}</p>
                 )}
               </div>
@@ -340,8 +383,8 @@ const MyRequests: React.FC = () => {
                 <h4>Your Request</h4>
                 <p><strong>Requested Quantity:</strong> {selectedRequest.requestedQuantity.value} {selectedRequest.requestedQuantity.unit}</p>
                 <p><strong>Offered Price:</strong> ₹{selectedRequest.offeredPrice.value}/{selectedRequest.offeredPrice.unit}</p>
-                {selectedRequest.message && (
-                  <p><strong>Message:</strong> {selectedRequest.message}</p>
+                {selectedRequest.buyerNote && (
+                  <p><strong>Message:</strong> {selectedRequest.buyerNote}</p>
                 )}
               </div>
 
@@ -349,8 +392,8 @@ const MyRequests: React.FC = () => {
                 <div className="detail-section counter-offer-detail">
                   <h4>Counter Offer from Farmer</h4>
                   <p><strong>Counter Price:</strong> ₹{selectedRequest.counterOffer.price.value}/{selectedRequest.counterOffer.price.unit}</p>
-                  {selectedRequest.counterOffer.message && (
-                    <p><strong>Farmer's Message:</strong> {selectedRequest.counterOffer.message}</p>
+                  {selectedRequest.counterOffer.note && (
+                    <p><strong>Farmer's Message:</strong> {selectedRequest.counterOffer.note}</p>
                   )}
                 </div>
               )}
@@ -374,7 +417,7 @@ const MyRequests: React.FC = () => {
               </div>
 
               <div className="modal-actions">
-                {selectedRequest.status === 'counter-offered' && (
+                {selectedRequest.status === 'farmer_countered' && (
                   <button 
                     className="btn-accept" 
                     onClick={() => handleAcceptCounterOffer(selectedRequest._id)}
@@ -382,7 +425,7 @@ const MyRequests: React.FC = () => {
                     Accept Counter Offer
                   </button>
                 )}
-                {(selectedRequest.status === 'pending' || selectedRequest.status === 'counter-offered') && (
+                {(selectedRequest.status === 'pending' || selectedRequest.status === 'farmer_countered') && (
                   <button 
                     className="btn-cancel" 
                     onClick={() => handleCancelRequest(selectedRequest._id)}

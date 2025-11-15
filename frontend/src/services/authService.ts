@@ -106,8 +106,17 @@ export const authService = {
     const userStr = localStorage.getItem('user');
     if (userStr) {
       try {
-        return JSON.parse(userStr);
+        const user = JSON.parse(userStr);
+        // Validate that user object has required fields
+        if (user && user.id && user.role) {
+          return user;
+        }
+        // Invalid user data, clear it
+        localStorage.removeItem('user');
+        return null;
       } catch {
+        // Parse error, clear invalid data
+        localStorage.removeItem('user');
         return null;
       }
     }

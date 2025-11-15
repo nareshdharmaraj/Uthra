@@ -33,15 +33,19 @@ api.interceptors.response.use(
       
       // Handle specific status codes
       if (error.response.status === 401) {
-        // Unauthorized - clear token and redirect to login
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        // Unauthorized - only clear token and redirect if it's an auth failure
+        // Don't redirect if already on login page or if server is down
+        const currentPath = window.location.pathname;
+        if (!currentPath.includes('/login') && !currentPath.includes('/register')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
       }
       
       return Promise.reject(new Error(message));
     } else if (error.request) {
-      // Request made but no response
+      // Request made but no response - Don't clear localStorage on network errors
       return Promise.reject(new Error('No response from server. Please check your connection.'));
     } else {
       // Error setting up request

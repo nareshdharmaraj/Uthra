@@ -3,7 +3,7 @@ const { mongoose } = require('../backend/config/database');
 const cropSchema = new mongoose.Schema({
   farmer: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Farmer',
     required: true
   },
   
@@ -173,6 +173,16 @@ const cropSchema = new mongoose.Schema({
     default: 0
   },
   
+  bookedQuantity: {
+    value: { type: Number, default: 0 },
+    unit: { type: String, default: 'kg' }
+  },
+  
+  soldQuantity: {
+    value: { type: Number, default: 0 },
+    unit: { type: String, default: 'kg' }
+  },
+  
   // Entry method tracking
   entryMethod: {
     type: String,
@@ -241,5 +251,35 @@ cropSchema.methods.reduceQuantity = function(amount) {
   }
   return this.save();
 };
+
+// Static method to update expired crops
+cropSchema.statics.updateExpiredCrops = async function() {
+  const now = new Date();
+  const result = await this.updateMany(
+    {
+      status: 'active',
+      availableTo: { $lt: now }
+    },
+    {
+      $set: { status: 'expired' }
+    }
+  );
+  return result;
+};
+
+// Pre-find hook to update expired crops before queries
+cropSchema.pre(/^find/, async function(next) {
+  const now = new Date();
+  await this.model.updateMany(
+    {
+      status: 'active',
+      availableTo: { $lt: now }
+    },
+    {
+      $set: { status: 'expired' }
+    }
+  );
+  next();
+});
 
 module.exports = mongoose.models.Crop || mongoose.model('Crop', cropSchema);

@@ -3,7 +3,7 @@ const { mongoose } = require('../backend/config/database');
 const requestSchema = new mongoose.Schema({
   buyer: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Buyer',
     required: true
   },
   
@@ -15,7 +15,7 @@ const requestSchema = new mongoose.Schema({
   
   farmer: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Farmer',
     required: true
   },
   

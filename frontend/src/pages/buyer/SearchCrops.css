@@ -219,6 +219,19 @@
   margin-top: 10px;
 }
 
+.pending-request-note {
+  background: #fff3cd;
+  color: #856404;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin: 8px 0;
+  border-left: 3px solid #ffc107;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .crop-stats {
   display: flex;
   gap: 15px;
