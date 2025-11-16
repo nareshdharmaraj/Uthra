@@ -104,12 +104,20 @@ const MyRequests: React.FC = () => {
   };
 
   const handleAcceptCounterOffer = async (requestId: string) => {
+    if (!window.confirm('Are you sure you want to accept this counter offer?')) {
+      return;
+    }
+
     try {
       await api.put(`/buyers/requests/${requestId}/accept`);
+      alert('Counter offer accepted successfully!');
       fetchRequests(pagination.currentPage);
       setShowDetailModal(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to accept counter offer');
+      const errorMessage = err.response?.data?.message || 'Failed to accept counter offer';
+      setError(errorMessage);
+      alert(errorMessage);
+      console.error('Accept counter offer error:', err);
     }
   };
 

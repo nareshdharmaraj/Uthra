@@ -44,6 +44,7 @@ export interface User {
   name: string;
   email?: string;
   role: UserRole;
+  buyerType?: 'individual' | 'company'; // For buyers
   location?: Location;
   farmerDetails?: FarmerDetails;
   buyerDetails?: BuyerDetails;

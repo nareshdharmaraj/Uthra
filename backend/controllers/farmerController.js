@@ -33,7 +33,13 @@ exports.getMyCrops = async (req, res, next) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
 
-    const query = { farmer: req.user.id };
+    const query = { 
+      farmer: req.user.id,
+      $or: [
+        { isVisible: true },
+        { isVisible: { $exists: false } }
+      ]
+    };
     if (status) query.status = status;
 
     const crops = await Crop.find(query)
@@ -227,10 +233,30 @@ exports.acceptRequest = async (req, res, next) => {
       });
     }
 
+    const oldStatus = request.status;
     await request.updateStatus('farmer_accepted', 'Farmer accepted the request');
 
+    // If auto-confirming (no counter offer), update quantities
+    if (request.status === 'confirmed') {
+      const Crop = require('../models/Crop');
+      const crop = await Crop.findById(request.crop);
+      if (crop) {
+        const quantity = request.requestedQuantity?.value || 0;
+        const unit = request.requestedQuantity?.unit || 'kg';
+        
+        crop.availableQuantity.value = Math.max(0, crop.availableQuantity.value - quantity);
+        crop.bookedQuantity.value = (crop.bookedQuantity.value || 0) + quantity;
+        crop.bookedQuantity.unit = unit;
+        
+        if (crop.availableQuantity.value === 0 && crop.bookedQuantity.value === 0) {
+          crop.status = 'sold_out';
+        }
+        
+        await crop.save();
+      }
+    }
+
     // TODO: Send SMS notification to buyer
-    // TODO: Update crop quantity
 
     res.status(200).json({
       success: true,

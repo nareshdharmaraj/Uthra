@@ -2,10 +2,19 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const buyerController = require('../controllers/buyerController');
+const companyBuyerController = require('../controllers/companyBuyerController');
 
 // All routes require buyer authentication
 router.use(protect);
 router.use(authorize('buyer'));
+
+// Company buyer routes
+router.get('/company/dashboard', companyBuyerController.getCompanyDashboard);
+router.get('/company/employees', companyBuyerController.getEmployees);
+router.post('/company/employees', companyBuyerController.addEmployee);
+router.put('/company/employees/:employeeId', companyBuyerController.updateEmployee);
+router.delete('/company/employees/:employeeId', companyBuyerController.removeEmployee);
+router.get('/company/stock', companyBuyerController.getCompanyStock);
 
 // Browse crops
 router.get('/crops', buyerController.browseCrops);

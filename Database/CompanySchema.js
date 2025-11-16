@@ -42,14 +42,14 @@ const companySchema = new mongoose.Schema({
   // Contact Information
   email: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
     lowercase: true
   },
   
   phone: {
     type: String,
-    required: true,
+    required: false,
     trim: true
   },
   

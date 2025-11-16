@@ -4,6 +4,46 @@ const User = require('../models/User');
 const Buyer = require('../models/BuyerModel');
 const Farmer = require('../models/Farmer');
 
+// Helper function to update crop quantities based on request status changes
+const updateCropQuantities = async (request, oldStatus, newStatus) => {
+  try {
+    const crop = await Crop.findById(request.crop);
+    if (!crop) return;
+
+    const quantity = request.requestedQuantity?.value || 0;
+    const unit = request.requestedQuantity?.unit || 'kg';
+
+    // Handle status transitions
+    if (newStatus === 'confirmed' && oldStatus !== 'confirmed') {
+      // Moving to confirmed: reduce available, increase booked
+      crop.availableQuantity.value = Math.max(0, crop.availableQuantity.value - quantity);
+      crop.bookedQuantity.value = (crop.bookedQuantity.value || 0) + quantity;
+      crop.bookedQuantity.unit = unit;
+    } else if (newStatus === 'completed' && oldStatus === 'confirmed') {
+      // Moving from confirmed to completed: reduce booked, increase sold
+      crop.bookedQuantity.value = Math.max(0, (crop.bookedQuantity.value || 0) - quantity);
+      crop.soldQuantity.value = (crop.soldQuantity.value || 0) + quantity;
+      crop.soldQuantity.unit = unit;
+    } else if (newStatus === 'cancelled' && oldStatus === 'confirmed') {
+      // Moving from confirmed to cancelled: reduce booked, restore available
+      crop.bookedQuantity.value = Math.max(0, (crop.bookedQuantity.value || 0) - quantity);
+      crop.availableQuantity.value = crop.availableQuantity.value + quantity;
+    }
+
+    // Update crop status if needed
+    if (crop.availableQuantity.value === 0 && crop.bookedQuantity.value === 0) {
+      crop.status = 'sold_out';
+    } else if (crop.status === 'sold_out' && (crop.availableQuantity.value > 0 || crop.bookedQuantity.value > 0)) {
+      crop.status = 'active';
+    }
+
+    await crop.save();
+  } catch (error) {
+    console.error('Error updating crop quantities:', error);
+    // Don't throw - we don't want to fail the request update if quantity update fails
+  }
+};
+
 // @desc    Browse all crops
 // @route   GET /api/buyers/crops
 // @access  Private (Buyer)
@@ -289,7 +329,7 @@ exports.acceptCounterOffer = async (req, res, next) => {
     if (request.status !== 'farmer_countered') {
       return res.status(400).json({
         success: false,
-        message: 'No counter offer to accept'
+        message: `Cannot accept counter offer. Request status is '${request.status}'. Expected 'farmer_countered'.`
       });
     }
 
@@ -300,10 +340,13 @@ exports.acceptCounterOffer = async (req, res, next) => {
       agreedAt: new Date()
     };
 
+    const oldStatus = request.status;
     await request.updateStatus('confirmed', 'Buyer accepted counter offer');
 
+    // Update crop quantities
+    await updateCropQuantities(request, oldStatus, 'confirmed');
+
     // TODO: Send SMS notification to farmer
-    // TODO: Update crop quantity
 
     res.status(200).json({
       success: true,

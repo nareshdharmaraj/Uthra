@@ -1,26 +1,27 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import BuyerLayout from '../../components/layouts/BuyerLayout';
-import BuyerHome from './Home';
-import BuyerProfile from './BuyerProfile';
-import UnifiedSearch from './UnifiedSearch';
-import WantedCrops from './WantedCrops';
-import MyRequests from './MyRequests';
-import Settings from './Settings';
+import React, { useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
+// Legacy Dashboard - Redirects to new separate dashboards
 const Dashboard: React.FC = () => {
-  return (
-    <BuyerLayout>
-      <Routes>
-        <Route path="/" element={<BuyerHome />} />
-        <Route path="/profile" element={<BuyerProfile />} />
-        <Route path="/search" element={<UnifiedSearch />} />
-        <Route path="/wanted-crops" element={<WantedCrops />} />
-        <Route path="/requests" element={<MyRequests />} />
-        <Route path="/settings" element={<Settings />} />
-      </Routes>
-    </BuyerLayout>
-  );
+  const navigate = useNavigate();
+  const { user } = useSelector((state: RootState) => state.auth);
+
+  useEffect(() => {
+    // Redirect to the appropriate dashboard
+    if (user?.buyerType === 'company') {
+      navigate('/company-buyer', { replace: true });
+    } else {
+      navigate('/individual-buyer', { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Fallback for immediate redirect
+  if (user?.buyerType === 'company') {
+    return <Navigate to="/company-buyer" replace />;
+  }
+  return <Navigate to="/individual-buyer" replace />;
 };
 
 export default Dashboard;

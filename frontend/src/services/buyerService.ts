@@ -152,7 +152,32 @@ const buyerService = {
   getMyRequests,
   getRequestDetails,
   acceptCounterOffer,
-  cancelRequest
+  cancelRequest,
+  // Company Buyer APIs
+  getCompanyDashboard: async () => {
+    const response = await api.get('/buyers/company/dashboard');
+    return response.data;
+  },
+  getCompanyEmployees: async () => {
+    const response = await api.get('/buyers/company/employees');
+    return response.data;
+  },
+  addEmployee: async (employeeData: any) => {
+    const response = await api.post('/buyers/company/employees', employeeData);
+    return response.data;
+  },
+  updateEmployee: async (employeeId: string, employeeData: any) => {
+    const response = await api.put(`/buyers/company/employees/${employeeId}`, employeeData);
+    return response.data;
+  },
+  removeEmployee: async (employeeId: string) => {
+    const response = await api.delete(`/buyers/company/employees/${employeeId}`);
+    return response.data;
+  },
+  getCompanyStock: async () => {
+    const response = await api.get('/buyers/company/stock');
+    return response.data;
+  }
 };
 
 export default buyerService;

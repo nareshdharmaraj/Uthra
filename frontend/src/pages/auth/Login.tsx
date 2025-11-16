@@ -38,7 +38,17 @@ const Login: React.FC = () => {
     // Only navigate after a login attempt, not on initial page load
     if (isAuthenticated && user && loginAttemptedRef.current) {
       toast.success(`Welcome back, ${user.name}!`);
-      navigate(`/${user.role}`);
+      
+      // Route buyers to the appropriate dashboard based on buyerType
+      if (user.role === 'buyer') {
+        if (user.buyerType === 'company') {
+          navigate('/company-buyer');
+        } else {
+          navigate('/individual-buyer');
+        }
+      } else {
+        navigate(`/${user.role}`);
+      }
     }
   }, [isAuthenticated, user, navigate]);
 

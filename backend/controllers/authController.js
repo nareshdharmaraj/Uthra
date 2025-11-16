@@ -276,20 +276,34 @@ exports.completeRegistrationStep4 = async (req, res, next) => {
       console.log(`   Farmer can now login via IVR using mobile: ${user.mobile} and PIN`);
     }
 
+    // Build user response with buyerType for buyers
+    const userResponse = {
+      _id: user._id,
+      id: user._id,
+      name: user.name,
+      mobile: user.mobile,
+      role: user.role,
+      email: user.email,
+      location: user.location,
+      isVerified: user.isVerified,
+      isActive: user.isActive,
+      registrationStage: user.registrationStage || 3,
+      registrationCompleted: user.registrationCompleted,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+
+    // Add buyerType for buyers
+    if (user.role === 'buyer' && user.buyerType) {
+      userResponse.buyerType = user.buyerType;
+    }
+
     res.status(200).json({
       success: true,
       message: 'Registration completed successfully',
       data: {
         token,
-        user: {
-          id: user._id,
-          name: user.name,
-          mobile: user.mobile,
-          role: user.role,
-          email: user.email,
-          location: user.location,
-          registrationCompleted: user.registrationCompleted
-        }
+        user: userResponse
       }
     });
   } catch (error) {
@@ -359,19 +373,41 @@ exports.login = async (req, res, next) => {
     // Generate token
     const token = generateToken(user._id);
 
+    // Build user response with buyerType for buyers
+    const userResponse = {
+      _id: user._id,
+      id: user._id,
+      name: user.name,
+      mobile: user.mobile,
+      email: user.email,
+      role: user.role,
+      location: user.location,
+      isVerified: user.isVerified,
+      isActive: user.isActive,
+      registrationStage: user.registrationStage || 3,
+      registrationCompleted: user.registrationCompleted,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+
+    // Add buyerType for buyers
+    console.log('🔍 User role:', user.role);
+    console.log('🔍 User buyerType from DB:', user.buyerType);
+    if (user.role === 'buyer' && user.buyerType) {
+      userResponse.buyerType = user.buyerType;
+      console.log('✅ Added buyerType to response:', userResponse.buyerType);
+    } else {
+      console.log('❌ buyerType not added - role:', user.role, 'buyerType:', user.buyerType);
+    }
+
+    console.log('📤 Sending user response:', JSON.stringify(userResponse, null, 2));
+
     res.status(200).json({
       success: true,
       message: 'Login successful',
       data: {
         token,
-        user: {
-          id: user._id,
-          name: user.name,
-          mobile: user.mobile,
-          email: user.email,
-          role: user.role,
-          location: user.location
-        }
+        user: userResponse
       }
     });
   } catch (error) {

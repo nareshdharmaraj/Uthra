@@ -16,17 +16,18 @@ const Home: React.FC = () => {
   }, [dispatch]);
 
   const quickActions = [
-    { title: 'My Profile', path: '/buyer/profile', icon: '👤', color: '#4CAF50' },
-    { title: 'Search Crops', path: '/buyer/search-crops', icon: '🌾', color: '#2196F3' },
-    { title: 'Search Farmers', path: '/buyer/search-farmers', icon: '🚜', color: '#FF9800' },
-    { title: 'Wanted Crops', path: '/buyer/wanted-crops', icon: '📋', color: '#9C27B0' }
+    { title: 'My Profile', path: '/individual-buyer/profile', icon: '👤', color: '#4CAF50' },
+    { title: 'Search Crops', path: '/individual-buyer/search', icon: '🌾', color: '#2196F3' },
+    { title: 'Wanted Crops', path: '/individual-buyer/wanted-crops', icon: '📋', color: '#9C27B0' },
+    { title: 'My Requests', path: '/individual-buyer/requests', icon: '📬', color: '#FF9800' }
   ];
 
   return (
     <div className="dashboard-home">
       <div className="welcome-section">
         <h1>Welcome back, {user?.name}! 🧺</h1>
-        <p className="subtitle">Manage your purchases and connect with farmers</p>
+        <p className="subtitle">Individual Buyer Dashboard - Manage your purchases and connect with farmers</p>
+        <span style={{background: '#4CAF50', color: 'white', padding: '0.3rem 1rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600}}>INDIVIDUAL BUYER</span>
       </div>
 
       {/* Stats Grid */}

@@ -88,7 +88,7 @@ const MyRequests: React.FC = () => {
 
     try {
       const offerData = {
-        offeredPrice: {
+        price: {
           value: parseFloat(counterOffer.value),
           unit: counterOffer.unit
         }

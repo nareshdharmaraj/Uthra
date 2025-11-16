@@ -4,18 +4,17 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../features/auth/authSlice';
 import { RootState } from '../../types';
 import { AppDispatch } from '../../store';
-import './Layout.css';
+import '../../components/layouts/Layout.css';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const BuyerLayout: React.FC<LayoutProps> = ({ children }) => {
+const IndividualBuyerLayout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
-  const isCompanyBuyer = user?.buyerType === 'company';
 
   const handleLogout = () => {
     dispatch(logout());
@@ -31,37 +30,25 @@ const BuyerLayout: React.FC<LayoutProps> = ({ children }) => {
       <aside className="sidebar">
         <div className="sidebar-header">
           <h2>🌾 Uthra</h2>
-          <p>{isCompanyBuyer ? 'Company Dashboard' : 'Buyer Dashboard'}</p>
+          <p>Individual Buyer</p>
         </div>
         <nav className="sidebar-nav">
-          <Link to="/buyer" className={`nav-item ${isActive('/buyer') ? 'active' : ''}`}>
+          <Link to="/individual-buyer" className={`nav-item ${isActive('/individual-buyer') ? 'active' : ''}`}>
             🏠 Home
           </Link>
-          <Link to="/buyer/profile" className={`nav-item ${isActive('/buyer/profile') ? 'active' : ''}`}>
-            {isCompanyBuyer ? '🏢' : '👤'} Profile
+          <Link to="/individual-buyer/profile" className={`nav-item ${isActive('/individual-buyer/profile') ? 'active' : ''}`}>
+            👤 Profile
           </Link>
-          
-          {isCompanyBuyer && (
-            <>
-              <Link to="/buyer/employees" className={`nav-item ${isActive('/buyer/employees') ? 'active' : ''}`}>
-                👥 Employees
-              </Link>
-              <Link to="/buyer/company-stock" className={`nav-item ${isActive('/buyer/company-stock') ? 'active' : ''}`}>
-                📦 Company Stock
-              </Link>
-            </>
-          )}
-          
-          <Link to="/buyer/search" className={`nav-item ${isActive('/buyer/search') ? 'active' : ''}`}>
+          <Link to="/individual-buyer/search" className={`nav-item ${isActive('/individual-buyer/search') ? 'active' : ''}`}>
             🔍 Search
           </Link>
-          <Link to="/buyer/wanted-crops" className={`nav-item ${isActive('/buyer/wanted-crops') ? 'active' : ''}`}>
+          <Link to="/individual-buyer/wanted-crops" className={`nav-item ${isActive('/individual-buyer/wanted-crops') ? 'active' : ''}`}>
             📋 Wanted Crops
           </Link>
-          <Link to="/buyer/requests" className={`nav-item ${isActive('/buyer/requests') ? 'active' : ''}`}>
-            📬 {isCompanyBuyer ? 'Team Requests' : 'My Requests'}
+          <Link to="/individual-buyer/requests" className={`nav-item ${isActive('/individual-buyer/requests') ? 'active' : ''}`}>
+            📬 My Requests
           </Link>
-          <Link to="/buyer/settings" className={`nav-item ${isActive('/buyer/settings') ? 'active' : ''}`}>
+          <Link to="/individual-buyer/settings" className={`nav-item ${isActive('/individual-buyer/settings') ? 'active' : ''}`}>
             ⚙️ Settings
           </Link>
         </nav>
@@ -85,4 +72,4 @@ const BuyerLayout: React.FC<LayoutProps> = ({ children }) => {
   );
 };
 
-export default BuyerLayout;
+export default IndividualBuyerLayout;

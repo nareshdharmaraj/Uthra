@@ -68,11 +68,16 @@ export const authService = {
   // Login
   login: async (credentials: LoginCredentials): Promise<ApiResponse<{ token: string; user: User }>> => {
     try {
+      console.log('🔐 Login request:', credentials);
       const response = await api.post('/auth/login', credentials);
+      console.log('✅ Login response:', response.data);
       // Save token and user to localStorage
       if (response.data.success && response.data.data) {
+        console.log('💾 Saving to localStorage - user:', response.data.data.user);
+        console.log('💾 User buyerType:', response.data.data.user.buyerType);
         localStorage.setItem('token', response.data.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.data.user));
+        console.log('✅ Saved to localStorage');
       }
       return response.data;
     } catch (error) {
@@ -97,25 +102,32 @@ export const authService = {
 
   // Logout
   logout: (): void => {
+    console.log('🚪 Logging out - clearing localStorage');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    console.log('✅ localStorage cleared');
   },
 
   // Get current user from localStorage
   getCurrentUser: (): User | null => {
     const userStr = localStorage.getItem('user');
+    console.log('🔍 getCurrentUser - Raw localStorage:', userStr);
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
+        console.log('🔍 getCurrentUser - Parsed user:', user);
+        console.log('🔍 getCurrentUser - buyerType:', user?.buyerType);
         // Validate that user object has required fields
         if (user && user.id && user.role) {
           return user;
         }
         // Invalid user data, clear it
+        console.log('❌ Invalid user data, clearing localStorage');
         localStorage.removeItem('user');
         return null;
       } catch {
         // Parse error, clear invalid data
+        console.log('❌ Parse error, clearing localStorage');
         localStorage.removeItem('user');
         return null;
       }

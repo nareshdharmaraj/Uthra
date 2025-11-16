@@ -15,6 +15,10 @@ import {
 const storedUser = authService.getCurrentUser();
 const storedToken = authService.getToken();
 
+// Debug logging
+console.log('🔍 AuthSlice Init - storedUser:', storedUser);
+console.log('🔍 AuthSlice Init - buyerType:', storedUser?.buyerType);
+
 // Verify that both token and user exist for authentication
 const isValidAuth = !!(storedToken && storedUser);
 

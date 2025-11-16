@@ -70,9 +70,17 @@ exports.protect = async (req, res, next) => {
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
+      const roleMessages = {
+        farmer: 'Farmers cannot access buyer features. Please log in with a buyer account.',
+        buyer: 'Buyers cannot access farmer features. Please log in with a farmer account.',
+        admin: 'Admins cannot access this feature.'
+      };
+      
+      const message = roleMessages[req.user.role] || `User role '${req.user.role}' is not authorized to access this route`;
+      
       return res.status(403).json({
         success: false,
-        message: `User role '${req.user.role}' is not authorized to access this route`
+        message
       });
     }
     next();

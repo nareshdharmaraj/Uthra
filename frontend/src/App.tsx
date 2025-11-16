@@ -7,6 +7,8 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import FarmerDashboard from './pages/farmer/Dashboard';
 import BuyerDashboard from './pages/buyer/Dashboard';
+import IndividualBuyerDashboard from './pages/individualBuyer/IndividualBuyerDashboard';
+import CompanyBuyerDashboard from './pages/companyBuyer/CompanyBuyerDashboard';
 import AdminDashboard from './pages/admin/Dashboard';
 import NotFound from './pages/NotFound';
 
@@ -33,12 +35,32 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Buyer Routes */}
+        {/* Buyer Routes - Legacy (redirects to appropriate dashboard) */}
         <Route
           path="/buyer/*"
           element={
             <PrivateRoute allowedRoles={['buyer']}>
               <BuyerDashboard />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Individual Buyer Routes */}
+        <Route
+          path="/individual-buyer/*"
+          element={
+            <PrivateRoute allowedRoles={['buyer']}>
+              <IndividualBuyerDashboard />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Company Buyer Routes */}
+        <Route
+          path="/company-buyer/*"
+          element={
+            <PrivateRoute allowedRoles={['buyer']}>
+              <CompanyBuyerDashboard />
             </PrivateRoute>
           }
         />
