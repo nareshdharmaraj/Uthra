@@ -31,6 +31,7 @@ router.get('/analytics/overview', adminController.getAnalyticsOverview);
 router.get('/analytics/crops', adminController.getCropAnalytics);
 router.get('/analytics/users', adminController.getUserAnalytics);
 router.get('/analytics/transactions', adminController.getTransactionAnalytics);
+router.get('/analytics/dashboard', adminController.getDashboardAnalytics);
 
 // Call logs
 router.get('/call-logs', adminController.getCallLogs);
@@ -41,5 +42,18 @@ router.get('/sms-logs', adminController.getSMSLogs);
 
 // Notifications
 router.post('/notifications/broadcast', adminController.sendBroadcastNotification);
+router.get('/notifications', adminController.getAllNotifications);
+
+// Activity logs
+router.get('/activity-logs', adminController.getActivityLogs);
+
+// System health
+router.get('/system/health', adminController.getSystemHealth);
+router.get('/system/stats', adminController.getSystemStats);
+
+// Reports
+router.get('/reports/users', adminController.generateUserReport);
+router.get('/reports/transactions', adminController.generateTransactionReport);
+router.get('/reports/revenue', adminController.generateRevenueReport);
 
 module.exports = router;

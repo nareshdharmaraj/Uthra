@@ -17,7 +17,7 @@ const Home: React.FC = () => {
       <header className={`header ${scrollY > 50 ? 'scrolled' : ''}`}>
         <div className="container">
           <Link to="/" className="logo">
-            <span className="logo-icon">🌾</span>
+            <img src="/uthralogo.png" alt="Uthra Logo" className="logo-image" style={{height: '40px', width: 'auto'}} />
             <span className="logo-text">Uthra</span>
           </Link>
           <nav className="nav">
@@ -227,7 +227,7 @@ const Home: React.FC = () => {
           <div className="footer-grid">
             <div className="footer-section footer-about">
               <div className="footer-logo">
-                <span className="logo-icon">🌾</span>
+                <img src="/uthralogo.png" alt="Uthra Logo" className="logo-image" style={{height: '35px', width: 'auto'}} />
                 <span className="logo-text">Uthra</span>
               </div>
               <p className="footer-tagline">Connecting farmers and buyers for transparent, fair-trade agriculture</p>

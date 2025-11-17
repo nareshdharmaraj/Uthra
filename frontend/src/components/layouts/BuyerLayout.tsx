@@ -30,7 +30,8 @@ const BuyerLayout: React.FC<LayoutProps> = ({ children }) => {
     <div className="dashboard-layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>🌾 Uthra</h2>
+          <img src="/uthralogo.png" alt="Uthra Logo" style={{height: '40px', width: 'auto', marginBottom: '8px'}} />
+          <h2 style={{fontSize: '1.5rem', margin: '0'}}>Uthra</h2>
           <p>{isCompanyBuyer ? 'Company Dashboard' : 'Buyer Dashboard'}</p>
         </div>
         <nav className="sidebar-nav">

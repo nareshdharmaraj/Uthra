@@ -29,7 +29,8 @@ const AdminLayout: React.FC<LayoutProps> = ({ children }) => {
     <div className="dashboard-layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>🌾 Uthra</h2>
+          <img src="/uthralogo.png" alt="Uthra Logo" style={{height: '40px', width: 'auto', marginBottom: '8px'}} />
+          <h2 style={{fontSize: '1.5rem', margin: '0'}}>Uthra</h2>
           <p>Admin Panel</p>
         </div>
         <nav className="sidebar-nav">
@@ -38,6 +39,10 @@ const AdminLayout: React.FC<LayoutProps> = ({ children }) => {
           <Link to="/admin/crops" className={`nav-item ${isActive('/admin/crops') ? 'active' : ''}`}>🌾 Crops</Link>
           <Link to="/admin/requests" className={`nav-item ${isActive('/admin/requests') ? 'active' : ''}`}>📋 Requests</Link>
           <Link to="/admin/analytics" className={`nav-item ${isActive('/admin/analytics') ? 'active' : ''}`}>📈 Analytics</Link>
+          <Link to="/admin/call-logs" className={`nav-item ${isActive('/admin/call-logs') ? 'active' : ''}`}>📞 Call Logs</Link>
+          <Link to="/admin/sms-logs" className={`nav-item ${isActive('/admin/sms-logs') ? 'active' : ''}`}>📱 SMS Logs</Link>
+          <Link to="/admin/activity-logs" className={`nav-item ${isActive('/admin/activity-logs') ? 'active' : ''}`}>📊 Activity Logs</Link>
+          <Link to="/admin/system-health" className={`nav-item ${isActive('/admin/system-health') ? 'active' : ''}`}>🔧 System Health</Link>
         </nav>
       </aside>
 

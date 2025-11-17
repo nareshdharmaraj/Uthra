@@ -718,7 +718,7 @@ const Register: React.FC = () => {
     <div className="register-container">
       <div className="register-card">
         <div className="register-header">
-          <h1>🌾 Uthra</h1>
+          <img src="/uthralogo.png" alt="Uthra Logo" style={{height: '60px', width: 'auto', marginBottom: '10px'}} />
           <h2>Create Account</h2>
           <div className="steps-indicator">
             <div className={`step-dot ${currentStep >= 1 ? 'active' : ''}`}>1</div>

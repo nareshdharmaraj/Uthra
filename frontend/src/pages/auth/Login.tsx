@@ -75,8 +75,7 @@ const Login: React.FC = () => {
         
         <div className="login-header">
           <div className="logo-wrapper">
-            <span className="logo-icon">🌾</span>
-            <span className="logo-text">Uthra</span>
+            <img src="/uthralogo.png" alt="Uthra Logo" className="logo-image" style={{height: '50px', width: 'auto', marginBottom: '10px'}} />
           </div>
           <h2>Welcome Back</h2>
           <p>Login to access your dashboard</p>

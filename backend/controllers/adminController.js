@@ -1,4 +1,7 @@
 const User = require('../models/User');
+const Farmer = require('../models/Farmer');
+const Buyer = require('../models/BuyerModel');
+const Admin = require('../models/AdminModel');
 const Crop = require('../models/Crop');
 const Request = require('../models/Request');
 const CallLog = require('../models/CallLog');
@@ -366,17 +369,332 @@ exports.getAnalyticsOverview = async (req, res, next) => {
   }
 };
 
-// Placeholder methods
+// @desc    Get crop analytics
+// @route   GET /api/admin/analytics/crops
+// @access  Private (Admin)
 exports.getCropAnalytics = async (req, res, next) => {
-  res.status(200).json({ success: true, message: 'Crop analytics coming soon' });
+  try {
+    const totalCrops = await Crop.countDocuments();
+    const activeCrops = await Crop.countDocuments({ status: 'active' });
+    const soldOutCrops = await Crop.countDocuments({ status: 'sold_out' });
+    const removedCrops = await Crop.countDocuments({ isVisible: false });
+
+    // Crops by category
+    const cropsByCategory = await Crop.aggregate([
+      { $match: { isVisible: { $ne: false } } },
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+          totalQuantity: { $sum: { $ifNull: ['$quantity.value', '$quantity'] } }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Top farmers by crops
+    const topFarmers = await Crop.aggregate([
+      { $match: { isVisible: { $ne: false } } },
+      {
+        $group: {
+          _id: '$farmer',
+          cropCount: { $sum: 1 }
+        }
+      },
+      { $sort: { cropCount: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: 'farmers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'farmer'
+        }
+      },
+      { $unwind: '$farmer' }
+    ]);
+
+    // Price trends
+    const priceTrends = await Crop.aggregate([
+      { $match: { isVisible: { $ne: false } } },
+      {
+        $group: {
+          _id: '$category',
+          minPrice: { $min: { $ifNull: ['$price.value', '$price'] } },
+          maxPrice: { $max: { $ifNull: ['$price.value', '$price'] } },
+          avgPrice: { $avg: { $ifNull: ['$price.value', '$price'] } }
+        }
+      }
+    ]);
+
+    // Recent crop additions
+    const recentCrops = await Crop.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('farmer', 'name mobile')
+      .select('name category price quantity status createdAt');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        total: totalCrops,
+        active: activeCrops,
+        soldOut: soldOutCrops,
+        removed: removedCrops,
+        cropsByCategory,
+        topFarmers,
+        priceAnalysis: priceTrends,
+        recentCrops
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
+// @desc    Get user analytics
+// @route   GET /api/admin/analytics/users
+// @access  Private (Admin)
 exports.getUserAnalytics = async (req, res, next) => {
-  res.status(200).json({ success: true, message: 'User analytics coming soon' });
+  try {
+    const totalFarmers = await Farmer.countDocuments();
+    const totalBuyers = await Buyer.countDocuments();
+    const totalAdmins = await Admin.countDocuments();
+    
+    const activeFarmers = await Farmer.countDocuments({ isActive: true });
+    const activeBuyers = await Buyer.countDocuments({ isActive: true });
+    
+    const verifiedFarmers = await Farmer.countDocuments({ isVerified: true });
+    const verifiedBuyers = await Buyer.countDocuments({ isVerified: true });
+
+    // User registrations over time (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const farmerRegistrations = await Farmer.aggregate([
+      { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    const buyerRegistrations = await Buyer.aggregate([
+      { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Buyer types distribution
+    const buyerTypes = await Buyer.aggregate([
+      {
+        $group: {
+          _id: '$buyerType',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // User locations (top districts)
+    const topDistricts = await Farmer.aggregate([
+      {
+        $group: {
+          _id: '$location.district',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // Most active users (by requests/crops)
+    const mostActiveUsers = await Request.aggregate([
+      {
+        $group: {
+          _id: '$buyer',
+          requestCount: { $sum: 1 }
+        }
+      },
+      { $sort: { requestCount: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: 'buyers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'buyerInfo'
+        }
+      },
+      { $unwind: '$buyerInfo' }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        summary: {
+          farmers: { total: totalFarmers, active: activeFarmers, verified: verifiedFarmers },
+          buyers: { total: totalBuyers, active: activeBuyers, verified: verifiedBuyers },
+          admins: { total: totalAdmins }
+        },
+        registrations: {
+          farmers: farmerRegistrations,
+          buyers: buyerRegistrations
+        },
+        buyerTypes,
+        topDistricts,
+        mostActiveUsers
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
+// @desc    Get transaction analytics
+// @route   GET /api/admin/analytics/transactions
+// @access  Private (Admin)
 exports.getTransactionAnalytics = async (req, res, next) => {
-  res.status(200).json({ success: true, message: 'Transaction analytics coming soon' });
+  try {
+    const totalRequests = await Request.countDocuments();
+    const pendingRequests = await Request.countDocuments({ status: 'pending' });
+    const confirmedRequests = await Request.countDocuments({ status: 'confirmed' });
+    const completedRequests = await Request.countDocuments({ status: 'completed' });
+    const cancelledRequests = await Request.countDocuments({ status: 'cancelled' });
+    const rejectedRequests = await Request.countDocuments({ status: 'farmer_rejected' });
+
+    // Request status distribution
+    const statusDistribution = await Request.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Transactions over time (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const transactionTrends = await Request.aggregate([
+      { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          count: { $sum: 1 },
+          totalValue: { $sum: { $multiply: ['$requestedQuantity.value', '$offeredPrice.value'] } }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Total transaction value (completed requests)
+    const transactionValue = await Request.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalValue: { 
+            $sum: { 
+              $multiply: [
+                { $ifNull: ['$finalAgreement.quantity.value', '$requestedQuantity.value'] },
+                { $ifNull: ['$finalAgreement.price.value', '$offeredPrice.value'] }
+              ]
+            }
+          },
+          totalQuantity: { $sum: { $ifNull: ['$finalAgreement.quantity.value', '$requestedQuantity.value'] } }
+        }
+      }
+    ]);
+
+    // Average transaction time (pending to completed)
+    const avgTransactionTime = await Request.aggregate([
+      { $match: { status: 'completed', completedAt: { $exists: true } } },
+      {
+        $project: {
+          duration: { $subtract: ['$completedAt', '$createdAt'] }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          avgDuration: { $avg: '$duration' }
+        }
+      }
+    ]);
+
+    // Top requested crops
+    const topRequestedCrops = await Request.aggregate([
+      {
+        $lookup: {
+          from: 'crops',
+          localField: 'crop',
+          foreignField: '_id',
+          as: 'cropInfo'
+        }
+      },
+      { $unwind: '$cropInfo' },
+      {
+        $group: {
+          _id: '$cropInfo.name',
+          count: { $sum: 1 },
+          totalQuantity: { $sum: { $ifNull: ['$requestedQuantity.value', '$requestedQuantity'] } }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // Counter offer statistics
+    const counterOfferStats = await Request.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalWithCounterOffer: {
+            $sum: { $cond: [{ $ne: ['$counterOffer', null] }, 1, 0] }
+          },
+          acceptedCounterOffers: {
+            $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    const counterOfferData = counterOfferStats[0] || { totalWithCounterOffer: 0, acceptedCounterOffers: 0 };
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        totalRequests,
+        pending: pendingRequests,
+        confirmed: confirmedRequests,
+        completed: completedRequests,
+        cancelled: cancelledRequests,
+        rejected: rejectedRequests,
+        transactionTrend: transactionTrends,
+        totalTransactionValue: transactionValue[0]?.totalValue || 0,
+        avgCompletionTime: avgTransactionTime[0] ? Math.round(avgTransactionTime[0].avgDuration / (1000 * 60 * 60 * 24)) : 0,
+        topCrops: topRequestedCrops,
+        counterOfferStats: {
+          total: counterOfferData.totalWithCounterOffer,
+          accepted: counterOfferData.acceptedCounterOffers,
+          acceptanceRate: counterOfferData.totalWithCounterOffer > 0 
+            ? (counterOfferData.acceptedCounterOffers / counterOfferData.totalWithCounterOffer * 100) 
+            : 0
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 exports.getCallLogs = async (req, res, next) => {
@@ -432,11 +750,457 @@ exports.sendBroadcastNotification = async (req, res, next) => {
   try {
     const { title, message, role, userIds } = req.body;
 
-    // TODO: Implement broadcast notification logic
+    let recipients = [];
+    
+    if (userIds && userIds.length > 0) {
+      recipients = userIds;
+    } else if (role) {
+      if (role === 'farmer') {
+        const farmers = await Farmer.find({ isActive: true }).select('_id');
+        recipients = farmers.map(f => f._id);
+      } else if (role === 'buyer') {
+        const buyers = await Buyer.find({ isActive: true }).select('_id');
+        recipients = buyers.map(b => b._id);
+      }
+    }
+
+    // Create notifications for all recipients
+    const notifications = recipients.map(userId => ({
+      user: userId,
+      title,
+      message,
+      type: 'broadcast',
+      createdBy: req.user.id
+    }));
+
+    await Notification.insertMany(notifications);
 
     res.status(200).json({
       success: true,
-      message: 'Broadcast notification sent'
+      message: `Broadcast notification sent to ${recipients.length} users`,
+      count: recipients.length
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get all notifications
+// @route   GET /api/admin/notifications
+// @access  Private (Admin)
+exports.getAllNotifications = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+
+    const notifications = await Notification.find()
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .populate('user', 'name mobile role')
+      .populate('createdBy', 'name');
+
+    const count = await Notification.countDocuments();
+
+    res.status(200).json({
+      success: true,
+      count: notifications.length,
+      total: count,
+      data: notifications
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get dashboard analytics
+// @route   GET /api/admin/analytics/dashboard
+// @access  Private (Admin)
+exports.getDashboardAnalytics = async (req, res, next) => {
+  try {
+    // Get counts
+    const totalFarmers = await Farmer.countDocuments();
+    const totalBuyers = await Buyer.countDocuments();
+    const totalCrops = await Crop.countDocuments({ isVisible: { $ne: false } });
+    const activeCrops = await Crop.countDocuments({ status: 'active', isVisible: { $ne: false } });
+    const totalRequests = await Request.countDocuments();
+    const pendingRequests = await Request.countDocuments({ status: 'pending' });
+    const completedRequests = await Request.countDocuments({ status: 'completed' });
+
+    // Today's activity
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayFarmers = await Farmer.countDocuments({ createdAt: { $gte: today } });
+    const todayBuyers = await Buyer.countDocuments({ createdAt: { $gte: today } });
+    const todayCrops = await Crop.countDocuments({ createdAt: { $gte: today } });
+    const todayRequests = await Request.countDocuments({ createdAt: { $gte: today } });
+
+    // Recent activity
+    const recentUsers = await Farmer.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('name mobile createdAt');
+
+    const recentCrops = await Crop.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('farmer', 'name mobile')
+      .select('name category price createdAt');
+
+    const recentRequests = await Request.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('buyer', 'name mobile')
+      .populate('crop', 'name')
+      .select('status createdAt');
+
+    // Transaction value
+    const completedValue = await Request.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalValue: {
+            $sum: {
+              $multiply: [
+                { $ifNull: ['$finalAgreement.quantity.value', '$requestedQuantity.value'] },
+                { $ifNull: ['$finalAgreement.price.value', '$offeredPrice.value'] }
+              ]
+            }
+          }
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        summary: {
+          totalFarmers,
+          totalBuyers,
+          totalCrops,
+          totalRequests,
+          totalTransactionValue: completedValue[0]?.totalValue || 0
+        },
+        todayActivity: {
+          newFarmers: todayFarmers,
+          newBuyers: todayBuyers,
+          newCrops: todayCrops,
+          newRequests: todayRequests
+        },
+        recentActivity: {
+          users: recentUsers,
+          crops: recentCrops,
+          requests: recentRequests
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get activity logs
+// @route   GET /api/admin/activity-logs
+// @access  Private (Admin)
+exports.getActivityLogs = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 50 } = req.query;
+
+    // Combine recent activities from different collections
+    const recentCrops = await Crop.find()
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .populate('farmer', 'name mobile')
+      .select('name action createdAt')
+      .lean();
+
+    const recentRequests = await Request.find()
+      .sort({ updatedAt: -1 })
+      .limit(20)
+      .populate('buyer', 'name')
+      .populate('farmer', 'name')
+      .populate('crop', 'name')
+      .select('status updatedAt')
+      .lean();
+
+    const recentUsers = await Farmer.find()
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .select('name role createdAt')
+      .lean();
+
+    // Combine and sort all activities
+    const activities = [
+      ...recentCrops.map(c => ({
+        type: 'crop',
+        action: 'created',
+        description: `${c.farmer?.name} added crop: ${c.name}`,
+        timestamp: c.createdAt,
+        user: c.farmer
+      })),
+      ...recentRequests.map(r => ({
+        type: 'request',
+        action: r.status,
+        description: `Request for ${r.crop?.name} - ${r.status}`,
+        timestamp: r.updatedAt,
+        buyer: r.buyer,
+        farmer: r.farmer
+      })),
+      ...recentUsers.map(u => ({
+        type: 'user',
+        action: 'registered',
+        description: `${u.name} registered as ${u.role}`,
+        timestamp: u.createdAt,
+        user: u
+      }))
+    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice((page - 1) * limit, page * limit);
+
+    res.status(200).json({
+      success: true,
+      count: activities.length,
+      data: activities
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get system health
+// @route   GET /api/admin/system/health
+// @access  Private (Admin)
+exports.getSystemHealth = async (req, res, next) => {
+  try {
+    const mongoose = require('mongoose');
+    
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    
+    // Database stats
+    const stats = await mongoose.connection.db.stats();
+    
+    // Collection counts
+    const farmerCount = await Farmer.countDocuments();
+    const buyerCount = await Buyer.countDocuments();
+    const cropCount = await Crop.countDocuments();
+    const requestCount = await Request.countDocuments();
+
+    // Recent errors (if you have error logging)
+    const recentErrors = [];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        status: 'healthy',
+        database: {
+          status: dbStatus,
+          collections: stats.collections,
+          dataSize: Math.round(stats.dataSize / (1024 * 1024)) + ' MB',
+          storageSize: Math.round(stats.storageSize / (1024 * 1024)) + ' MB',
+          indexes: stats.indexes
+        },
+        counts: {
+          farmers: farmerCount,
+          buyers: buyerCount,
+          crops: cropCount,
+          requests: requestCount
+        },
+        uptime: process.uptime(),
+        memory: {
+          used: Math.round(process.memoryUsage().heapUsed / (1024 * 1024)) + ' MB',
+          total: Math.round(process.memoryUsage().heapTotal / (1024 * 1024)) + ' MB'
+        },
+        recentErrors
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get system stats
+// @route   GET /api/admin/system/stats
+// @access  Private (Admin)
+exports.getSystemStats = async (req, res, next) => {
+  try {
+    const os = require('os');
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        server: {
+          platform: os.platform(),
+          architecture: os.arch(),
+          cpus: os.cpus().length,
+          totalMemory: Math.round(os.totalmem() / (1024 * 1024 * 1024)) + ' GB',
+          freeMemory: Math.round(os.freemem() / (1024 * 1024 * 1024)) + ' GB',
+          uptime: Math.round(os.uptime() / 3600) + ' hours'
+        },
+        process: {
+          nodeVersion: process.version,
+          pid: process.pid,
+          uptime: Math.round(process.uptime() / 3600) + ' hours',
+          memoryUsage: process.memoryUsage()
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Generate user report
+// @route   GET /api/admin/reports/users
+// @access  Private (Admin)
+exports.generateUserReport = async (req, res, next) => {
+  try {
+    const { startDate, endDate, role } = req.query;
+
+    const query = {};
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+
+    let users = [];
+    if (!role || role === 'farmer') {
+      const farmers = await Farmer.find(query).select('-password -pin');
+      users = [...users, ...farmers];
+    }
+    if (!role || role === 'buyer') {
+      const buyers = await Buyer.find(query).select('-password -pin');
+      users = [...users, ...buyers];
+    }
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      data: users
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Generate transaction report
+// @route   GET /api/admin/reports/transactions
+// @access  Private (Admin)
+exports.generateTransactionReport = async (req, res, next) => {
+  try {
+    const { startDate, endDate, status } = req.query;
+
+    const query = {};
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+    if (status) query.status = status;
+
+    const transactions = await Request.find(query)
+      .populate('buyer', 'name mobile businessName')
+      .populate('farmer', 'name mobile')
+      .populate('crop', 'name category')
+      .sort({ createdAt: -1 });
+
+    // Calculate totals
+    const summary = transactions.reduce((acc, req) => {
+      const quantity = req.finalAgreement?.quantity?.value || req.requestedQuantity?.value || 0;
+      const price = req.finalAgreement?.price?.value || req.offeredPrice?.value || 0;
+      const value = quantity * price;
+
+      return {
+        totalTransactions: acc.totalTransactions + 1,
+        totalQuantity: acc.totalQuantity + quantity,
+        totalValue: acc.totalValue + value
+      };
+    }, { totalTransactions: 0, totalQuantity: 0, totalValue: 0 });
+
+    res.status(200).json({
+      success: true,
+      count: transactions.length,
+      summary,
+      data: transactions
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Generate revenue report
+// @route   GET /api/admin/reports/revenue
+// @access  Private (Admin)
+exports.generateRevenueReport = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const matchQuery = { status: 'completed' };
+    if (startDate || endDate) {
+      matchQuery.completedAt = {};
+      if (startDate) matchQuery.completedAt.$gte = new Date(startDate);
+      if (endDate) matchQuery.completedAt.$lte = new Date(endDate);
+    }
+
+    // Revenue by category
+    const revenueByCategory = await Request.aggregate([
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: 'crops',
+          localField: 'crop',
+          foreignField: '_id',
+          as: 'cropInfo'
+        }
+      },
+      { $unwind: '$cropInfo' },
+      {
+        $group: {
+          _id: '$cropInfo.category',
+          totalRevenue: {
+            $sum: {
+              $multiply: [
+                { $ifNull: ['$finalAgreement.quantity.value', '$requestedQuantity.value'] },
+                { $ifNull: ['$finalAgreement.price.value', '$offeredPrice.value'] }
+              ]
+            }
+          },
+          transactionCount: { $sum: 1 }
+        }
+      },
+      { $sort: { totalRevenue: -1 } }
+    ]);
+
+    // Revenue over time
+    const revenueOverTime = await Request.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt' } },
+          dailyRevenue: {
+            $sum: {
+              $multiply: [
+                { $ifNull: ['$finalAgreement.quantity.value', '$requestedQuantity.value'] },
+                { $ifNull: ['$finalAgreement.price.value', '$offeredPrice.value'] }
+              ]
+            }
+          },
+          transactionCount: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Total revenue
+    const totalRevenue = revenueByCategory.reduce((sum, cat) => sum + cat.totalRevenue, 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalRevenue,
+        revenueByCategory,
+        revenueOverTime
+      }
     });
   } catch (error) {
     next(error);
