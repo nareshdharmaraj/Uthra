@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services';
 import '../../styles/Admin.css';
+import CounterCard from '../../components/common/CounterCard';
+import {
+  RegistrationTrendChart,
+  CropCategoryChart,
+  RequestStatusChart,
+  TransactionTrendChart,
+  BuyerTypeChart,
+  TopDistrictsChart
+} from '../../components/common/Charts';
 
 interface AnalyticsData {
   crops?: {
@@ -129,50 +138,34 @@ const Analytics: React.FC = () => {
         <div>
           <h2>Platform Overview</h2>
           <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon">🌾</div>
-              <div className="stat-content">
-                <h3>Total Crops</h3>
-                <p className="stat-number">{analytics.crops?.total || 0}</p>
-                <p style={{ fontSize: '0.85rem', color: '#7f8c8d' }}>
-                  {analytics.crops?.active || 0} active
-                </p>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">👥</div>
-              <div className="stat-content">
-                <h3>Total Users</h3>
-                <p className="stat-number">
-                  {(analytics.users?.totalFarmers || 0) + (analytics.users?.totalBuyers || 0)}
-                </p>
-                <p style={{ fontSize: '0.85rem', color: '#7f8c8d' }}>
-                  {analytics.users?.totalFarmers || 0} farmers, {analytics.users?.totalBuyers || 0} buyers
-                </p>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">📋</div>
-              <div className="stat-content">
-                <h3>Total Requests</h3>
-                <p className="stat-number">{analytics.transactions?.totalRequests || 0}</p>
-                <p style={{ fontSize: '0.85rem', color: '#7f8c8d' }}>
-                  {analytics.transactions?.completed || 0} completed
-                </p>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">💰</div>
-              <div className="stat-content">
-                <h3>Transaction Value</h3>
-                <p className="stat-number">
-                  ₹{(analytics.transactions?.totalTransactionValue || 0).toLocaleString()}
-                </p>
-                <p style={{ fontSize: '0.85rem', color: '#7f8c8d' }}>
-                  Total business value
-                </p>
-              </div>
-            </div>
+            <CounterCard
+              icon="🌾"
+              title="Total Crops"
+              value={analytics.crops?.total || 0}
+              subtitle={`${analytics.crops?.active || 0} active`}
+              color="#27ae60"
+            />
+            <CounterCard
+              icon="👥"
+              title="Total Users"
+              value={(analytics.users?.totalFarmers || 0) + (analytics.users?.totalBuyers || 0)}
+              subtitle={`${analytics.users?.totalFarmers || 0} farmers, ${analytics.users?.totalBuyers || 0} buyers`}
+              color="#3498db"
+            />
+            <CounterCard
+              icon="📋"
+              title="Total Requests"
+              value={analytics.transactions?.totalRequests || 0}
+              subtitle={`${analytics.transactions?.completed || 0} completed`}
+              color="#9b59b6"
+            />
+            <CounterCard
+              icon="💰"
+              title="Transaction Value"
+              value={analytics.transactions?.totalTransactionValue || 0}
+              subtitle="Total business value"
+              color="#e67e22"
+            />
           </div>
         </div>
       )}
@@ -217,7 +210,12 @@ const Analytics: React.FC = () => {
           {/* Crops by Category */}
           <div className="chart-card" style={{ marginTop: '2rem' }}>
             <h3>Crops by Category</h3>
-            <div className="admin-table-container">
+            {analytics.crops.cropsByCategory && analytics.crops.cropsByCategory.length > 0 ? (
+              <CropCategoryChart data={analytics.crops.cropsByCategory} height={350} />
+            ) : (
+              <p style={{ textAlign: 'center', padding: '2rem', color: '#95a5a6' }}>No crop category data available</p>
+            )}
+            <div className="admin-table-container" style={{ marginTop: '1rem' }}>
               <table className="admin-table">
                 <thead>
                   <tr>
@@ -227,13 +225,13 @@ const Analytics: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {analytics.crops.cropsByCategory.map((cat) => (
+                  {analytics.crops?.cropsByCategory?.map((cat) => (
                     <tr key={cat._id}>
                       <td><strong>{cat._id || 'Uncategorized'}</strong></td>
                       <td>{cat.count}</td>
                       <td>{cat.totalQuantity.toFixed(0)} units</td>
                     </tr>
-                  ))}
+                  )) || <tr><td colSpan={3}>No data available</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -252,13 +250,13 @@ const Analytics: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {analytics.crops.topFarmers.map((item, index) => (
+                  {analytics.crops?.topFarmers?.map((item, index) => (
                     <tr key={index}>
                       <td><strong>{item.farmer?.name || 'N/A'}</strong></td>
                       <td>{item.farmer?.phone || 'N/A'}</td>
                       <td>{item.cropCount}</td>
                     </tr>
-                  ))}
+                  )) || <tr><td colSpan={3}>No data available</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -278,14 +276,14 @@ const Analytics: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {analytics.crops.priceAnalysis.map((price) => (
+                  {analytics.crops?.priceAnalysis?.map((price) => (
                     <tr key={price._id}>
                       <td><strong>{price._id || 'Uncategorized'}</strong></td>
                       <td>₹{price.minPrice}</td>
                       <td>₹{price.maxPrice}</td>
                       <td>₹{price.avgPrice.toFixed(2)}</td>
                     </tr>
-                  ))}
+                  )) || <tr><td colSpan={4}>No data available</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -339,22 +337,32 @@ const Analytics: React.FC = () => {
           {/* Buyer Types */}
           <div className="chart-card" style={{ marginTop: '2rem' }}>
             <h3>Buyer Types Distribution</h3>
-            <div className="stats-grid">
-              {analytics.users.buyerTypes.map((type) => (
+            {analytics.users.buyerTypes && analytics.users.buyerTypes.length > 0 ? (
+              <BuyerTypeChart data={analytics.users.buyerTypes} height={300} />
+            ) : (
+              <p style={{ textAlign: 'center', padding: '2rem', color: '#95a5a6' }}>No buyer type data available</p>
+            )}
+            <div className="stats-grid" style={{ marginTop: '1rem' }}>
+              {analytics.users?.buyerTypes?.map((type) => (
                 <div key={type._id} className="stat-card">
                   <div className="stat-content">
                     <h3>{type._id || 'Unspecified'}</h3>
                     <p className="stat-number">{type.count}</p>
                   </div>
                 </div>
-              ))}
+              )) || <div className="stat-card"><div className="stat-content"><p>No data available</p></div></div>}
             </div>
           </div>
 
           {/* Top Districts */}
           <div className="chart-card" style={{ marginTop: '2rem' }}>
             <h3>Top 10 Districts by User Count</h3>
-            <div className="admin-table-container">
+            {analytics.users.topDistricts && analytics.users.topDistricts.length > 0 ? (
+              <TopDistrictsChart data={analytics.users.topDistricts} height={400} />
+            ) : (
+              <p style={{ textAlign: 'center', padding: '2rem', color: '#95a5a6' }}>No district data available</p>
+            )}
+            <div className="admin-table-container" style={{ marginTop: '1rem' }}>
               <table className="admin-table">
                 <thead>
                   <tr>
@@ -363,22 +371,23 @@ const Analytics: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {analytics.users.topDistricts.map((district) => (
+                  {analytics.users?.topDistricts?.slice(0, 10).map((district) => (
                     <tr key={district._id}>
                       <td><strong>{district._id || 'Unknown'}</strong></td>
                       <td>{district.count}</td>
                     </tr>
-                  ))}
+                  )) || <tr><td colSpan={2}>No data available</td></tr>}
                 </tbody>
               </table>
             </div>
           </div>
 
           {/* Registration Trend */}
-          {analytics.users.registrationTrend.length > 0 && (
+          {analytics.users?.registrationTrend && analytics.users.registrationTrend.length > 0 && (
             <div className="chart-card" style={{ marginTop: '2rem' }}>
               <h3>Registration Trend (Last 30 Days)</h3>
-              <div className="admin-table-container">
+              <RegistrationTrendChart data={analytics.users.registrationTrend} height={350} />
+              <div className="admin-table-container" style={{ marginTop: '1rem' }}>
                 <table className="admin-table">
                   <thead>
                     <tr>
@@ -445,7 +454,17 @@ const Analytics: React.FC = () => {
           {/* Status Distribution */}
           <div className="chart-card" style={{ marginTop: '2rem' }}>
             <h3>Request Status Distribution</h3>
-            <div className="stats-grid">
+            <RequestStatusChart 
+              data={[
+                { name: 'Pending', value: analytics.transactions.pending },
+                { name: 'Confirmed', value: analytics.transactions.confirmed },
+                { name: 'Completed', value: analytics.transactions.completed },
+                { name: 'Cancelled', value: analytics.transactions.cancelled },
+                { name: 'Rejected', value: analytics.transactions.rejected }
+              ].filter(item => item.value > 0)}
+              height={350}
+            />
+            <div className="stats-grid" style={{ marginTop: '1rem' }}>
               <div className="stat-card">
                 <div className="stat-content">
                   <h3>Confirmed</h3>
@@ -505,23 +524,37 @@ const Analytics: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {analytics.transactions.topCrops.map((crop) => (
+                  {analytics.transactions?.topCrops?.map((crop) => (
                     <tr key={crop._id}>
                       <td><strong>{crop._id || 'Unknown'}</strong></td>
                       <td>{crop.count}</td>
                       <td>{crop.totalQuantity.toFixed(0)} units</td>
                     </tr>
-                  ))}
+                  )) || (
+                    <tr>
+                      <td colSpan={3} style={{ textAlign: 'center', color: '#999' }}>
+                        No data available
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
 
           {/* Transaction Trend */}
-          {analytics.transactions.transactionTrend.length > 0 && (
+          {analytics.transactions?.transactionTrend && analytics.transactions.transactionTrend.length > 0 && (
             <div className="chart-card" style={{ marginTop: '2rem' }}>
               <h3>Transaction Trend (Last 30 Days)</h3>
-              <div className="admin-table-container">
+              <TransactionTrendChart 
+                data={analytics.transactions.transactionTrend.map((trend: any) => ({
+                  date: new Date(trend._id || trend.date).toLocaleDateString('en-IN'),
+                  count: trend.count || 0,
+                  totalValue: trend.totalValue || 0
+                }))}
+                height={350}
+              />
+              <div className="admin-table-container" style={{ marginTop: '1rem' }}>
                 <table className="admin-table">
                   <thead>
                     <tr>
@@ -531,11 +564,11 @@ const Analytics: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {analytics.transactions.transactionTrend.map((trend) => (
-                      <tr key={trend.date}>
-                        <td>{new Date(trend.date).toLocaleDateString()}</td>
-                        <td>{trend.count}</td>
-                        <td>₹{trend.totalValue.toLocaleString()}</td>
+                    {analytics.transactions.transactionTrend.map((trend: any, index: number) => (
+                      <tr key={trend._id || index}>
+                        <td>{new Date(trend._id).toLocaleDateString('en-IN')}</td>
+                        <td>{trend.count || 0}</td>
+                        <td>₹{(trend.totalValue || 0).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>

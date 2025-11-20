@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services';
+import UserDetailModal from '../../components/common/UserDetailModal';
+import PasswordChangeModal from '../../components/common/PasswordChangeModal';
+import CounterCard from '../../components/common/CounterCard';
 import '../../styles/Admin.css';
 
 interface User {
@@ -21,9 +24,11 @@ const Users: React.FC = () => {
     role: '',
     isActive: ''
   });
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserType, setSelectedUserType] = useState<'farmer' | 'buyer' | 'admin'>('farmer');
   const [showModal, setShowModal] = useState(false);
-  const [modalAction, setModalAction] = useState<'view' | 'delete' | 'verify' | 'activate' | 'deactivate'>('view');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedUserName, setSelectedUserName] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -51,66 +56,15 @@ const Users: React.FC = () => {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const openModal = (user: User, action: typeof modalAction) => {
-    setSelectedUser(user);
-    setModalAction(action);
+  const openModal = (user: User) => {
+    setSelectedUserId(user._id);
+    setSelectedUserType(user.role as 'farmer' | 'buyer' | 'admin');
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
-    setSelectedUser(null);
-  };
-
-  const handleAction = async () => {
-    if (!selectedUser) return;
-
-    try {
-      let response;
-      switch (modalAction) {
-        case 'delete':
-          response = await adminService.deleteUser(selectedUser._id);
-          break;
-        case 'verify':
-          response = await adminService.verifyUser(selectedUser._id);
-          break;
-        case 'activate':
-          response = await adminService.activateUser(selectedUser._id);
-          break;
-        case 'deactivate':
-          response = await adminService.deactivateUser(selectedUser._id);
-          break;
-        default:
-          return;
-      }
-      
-      alert(response.message || 'Action completed successfully');
-      closeModal();
-      fetchUsers();
-    } catch (error: any) {
-      console.error('Error performing action:', error);
-      alert(error.response?.data?.message || 'Failed to perform action');
-    }
-  };
-
-  const getActionButtonText = () => {
-    switch (modalAction) {
-      case 'delete': return 'Delete User';
-      case 'verify': return 'Verify User';
-      case 'activate': return 'Activate User';
-      case 'deactivate': return 'Deactivate User';
-      default: return 'OK';
-    }
-  };
-
-  const getActionMessage = () => {
-    switch (modalAction) {
-      case 'delete': return `Are you sure you want to delete user "${selectedUser?.name}"? This action cannot be undone.`;
-      case 'verify': return `Verify user "${selectedUser?.name}"?`;
-      case 'activate': return `Activate user "${selectedUser?.name}"?`;
-      case 'deactivate': return `Deactivate user "${selectedUser?.name}"?`;
-      default: return '';
-    }
+    setSelectedUserId(null);
   };
 
   if (loading) {
@@ -156,34 +110,10 @@ const Users: React.FC = () => {
 
       {/* Stats */}
       <div className="stats-grid" style={{ marginBottom: '2rem' }}>
-        <div className="stat-card">
-          <div className="stat-icon">👥</div>
-          <div className="stat-content">
-            <h3>Total Users</h3>
-            <p className="stat-number">{users.length}</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">✅</div>
-          <div className="stat-content">
-            <h3>Active Users</h3>
-            <p className="stat-number">{users.filter(u => u.isActive).length}</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🔒</div>
-          <div className="stat-content">
-            <h3>Verified Users</h3>
-            <p className="stat-number">{users.filter(u => u.isVerified).length}</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🌾</div>
-          <div className="stat-content">
-            <h3>Farmers</h3>
-            <p className="stat-number">{users.filter(u => u.role === 'farmer').length}</p>
-          </div>
-        </div>
+        <CounterCard icon="👥" title="Total Users" value={users.length} />
+        <CounterCard icon="✅" title="Active Users" value={users.filter(u => u.isActive).length} />
+        <CounterCard icon="🔒" title="Verified Users" value={users.filter(u => u.isVerified).length} />
+        <CounterCard icon="🌾" title="Farmers" value={users.filter(u => u.role === 'farmer').length} />
       </div>
 
       {/* Users Table */}
@@ -239,38 +169,20 @@ const Users: React.FC = () => {
                     <div className="table-actions">
                       <button 
                         className="table-btn view" 
-                        onClick={() => openModal(user, 'view')}
+                        onClick={() => openModal(user)}
                       >
-                        View
+                        View Details
                       </button>
-                      {!user.isVerified && (
-                        <button 
-                          className="table-btn verify" 
-                          onClick={() => openModal(user, 'verify')}
-                        >
-                          Verify
-                        </button>
-                      )}
-                      {user.isActive ? (
-                        <button 
-                          className="table-btn edit" 
-                          onClick={() => openModal(user, 'deactivate')}
-                        >
-                          Deactivate
-                        </button>
-                      ) : (
-                        <button 
-                          className="table-btn verify" 
-                          onClick={() => openModal(user, 'activate')}
-                        >
-                          Activate
-                        </button>
-                      )}
                       <button 
-                        className="table-btn delete" 
-                        onClick={() => openModal(user, 'delete')}
+                        className="table-btn edit"
+                        onClick={() => {
+                          setSelectedUserId(user._id);
+                          setSelectedUserName(user.name);
+                          setShowPasswordModal(true);
+                        }}
+                        style={{ marginLeft: '0.5rem' }}
                       >
-                        Delete
+                        🔑 Password
                       </button>
                     </div>
                   </td>
@@ -281,59 +193,31 @@ const Users: React.FC = () => {
         </table>
       </div>
 
-      {/* Modal */}
-      {showModal && selectedUser && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{modalAction === 'view' ? 'User Details' : 'Confirm Action'}</h2>
-              <button className="modal-close" onClick={closeModal}>×</button>
-            </div>
-            <div className="modal-body">
-              {modalAction === 'view' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div>
-                    <strong>Name:</strong> {selectedUser.name}
-                  </div>
-                  <div>
-                    <strong>Phone:</strong> {selectedUser.phone}
-                  </div>
-                  <div>
-                    <strong>Role:</strong> {selectedUser.role}
-                  </div>
-                  <div>
-                    <strong>District:</strong> {selectedUser.district || 'N/A'}
-                  </div>
-                  <div>
-                    <strong>Status:</strong> {selectedUser.isActive ? 'Active' : 'Inactive'}
-                  </div>
-                  <div>
-                    <strong>Verified:</strong> {selectedUser.isVerified ? 'Yes' : 'No'}
-                  </div>
-                  <div>
-                    <strong>Joined:</strong> {new Date(selectedUser.createdAt).toLocaleString()}
-                  </div>
-                </div>
-              ) : (
-                <p>{getActionMessage()}</p>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button className="modal-btn cancel" onClick={closeModal}>
-                Cancel
-              </button>
-              {modalAction !== 'view' && (
-                <button 
-                  className={`modal-btn confirm ${modalAction === 'delete' ? 'danger' : ''}`}
-                  onClick={handleAction}
-                  style={modalAction === 'delete' ? { background: '#e74c3c' } : {}}
-                >
-                  {getActionButtonText()}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* User Detail Modal */}
+      {showModal && selectedUserId && (
+        <UserDetailModal
+          userId={selectedUserId}
+          userType={selectedUserType}
+          onClose={closeModal}
+          onUpdate={fetchUsers}
+        />
+      )}
+
+      {/* Password Change Modal */}
+      {showPasswordModal && selectedUserId && (
+        <PasswordChangeModal
+          userId={selectedUserId}
+          userName={selectedUserName}
+          onClose={() => {
+            setShowPasswordModal(false);
+            setSelectedUserId(null);
+            setSelectedUserName('');
+          }}
+          onSuccess={() => {
+            alert('Password changed successfully');
+            fetchUsers();
+          }}
+        />
       )}
     </div>
   );

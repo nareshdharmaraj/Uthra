@@ -1,0 +1,102 @@
+.maintenance-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  padding: 12px 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.maintenance-banner-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.maintenance-icon {
+  font-size: 24px;
+  animation: rotate 3s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.maintenance-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.maintenance-text strong {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.maintenance-message {
+  font-size: 13px;
+  opacity: 0.95;
+}
+
+.maintenance-time {
+  font-size: 12px;
+  opacity: 0.85;
+  font-style: italic;
+}
+
+/* Adjust layout for smaller screens */
+@media (max-width: 768px) {
+  .maintenance-banner {
+    padding: 10px 15px;
+  }
+  
+  .maintenance-banner-content {
+    gap: 10px;
+  }
+  
+  .maintenance-icon {
+    font-size: 20px;
+  }
+  
+  .maintenance-text strong {
+    font-size: 14px;
+  }
+  
+  .maintenance-message,
+  .maintenance-time {
+    font-size: 11px;
+  }
+}
+
+/* Add padding to the body when banner is shown */
+body.maintenance-active {
+  padding-top: 80px;
+}
+
+body.maintenance-active .admin-layout {
+  margin-top: 80px;
+}

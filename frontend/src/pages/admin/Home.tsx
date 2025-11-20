@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../types';
 import { adminService } from '../../services';
 import '../../styles/Admin.css';
+import { formatQuantity, formatPriceWithUnit } from '../../utils/unitConversion';
 
 interface DashboardData {
   summary: {
@@ -217,16 +218,16 @@ const Home: React.FC = () => {
               <p className="no-data">No recent crops</p>
             ) : (
               dashboardData?.recentActivity.crops.map((crop: any) => {
-                const quantity = typeof crop.quantity === 'object' ? crop.quantity.value : crop.quantity;
-                const unit = typeof crop.quantity === 'object' ? crop.quantity.unit : crop.unit;
-                const price = typeof crop.pricePerUnit === 'object' ? crop.pricePerUnit.value : crop.pricePerUnit;
+                const quantityDisplay = formatQuantity(crop.quantity || crop.availableQuantity);
+                const priceDisplay = formatPriceWithUnit(crop.price);
+                const location = crop.location?.district ? `, ${crop.location.district}` : '';
                 
                 return (
                 <div key={crop._id} className="recent-item">
                   <div className="item-icon">🌾</div>
                   <div className="item-content">
-                    <p className="item-title">{crop.cropType}</p>
-                    <p className="item-subtitle">{quantity} {unit} - ₹{price}/{unit}</p>
+                    <p className="item-title">{crop.name || 'Unknown Crop'}{crop.variety ? ` (${crop.variety})` : ''}</p>
+                    <p className="item-subtitle">{quantityDisplay} - {priceDisplay}{location}</p>
                   </div>
                 </div>
                 );
@@ -241,17 +242,23 @@ const Home: React.FC = () => {
             {dashboardData?.recentActivity.requests.length === 0 ? (
               <p className="no-data">No recent requests</p>
             ) : (
-              dashboardData?.recentActivity.requests.map((request: any) => (
+              dashboardData?.recentActivity.requests.map((request: any) => {
+                const quantityDisplay = formatQuantity(request.requestedQuantity);
+                const buyerName = request.buyer?.name || 'Unknown Buyer';
+                const buyerType = request.buyer?.buyerType || request.buyerType || '';
+                
+                return (
                 <div key={request._id} className="recent-item">
                   <div className="item-icon">📋</div>
                   <div className="item-content">
-                    <p className="item-title">{request.crop?.cropType || 'Unknown'}</p>
+                    <p className="item-title">{request.crop?.name || 'Unknown'} - {buyerName}</p>
                     <p className="item-subtitle">
-                      {request.status} - {request.quantity} {request.crop?.unit || 'units'}
+                      {request.status} - {quantityDisplay}{buyerType ? ` (${buyerType})` : ''}
                     </p>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

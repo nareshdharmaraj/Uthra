@@ -7,6 +7,7 @@ const Request = require('../models/Request');
 const CallLog = require('../models/CallLog');
 const SMSLog = require('../models/SMSLog');
 const Notification = require('../models/Notification');
+const SystemSettings = require('../models/SystemSettings');
 
 // @desc    Get all users
 // @route   GET /api/admin/users
@@ -54,9 +55,24 @@ exports.getUserDetails = async (req, res, next) => {
       });
     }
 
+    // Get role-specific details
+    let roleDetails = null;
+    if (user.role === 'farmer') {
+      roleDetails = await Farmer.findOne({ user: user._id })
+        .select('farmSize crops landDetails experienceYears preferredLanguage bankDetails documents')
+        .lean();
+    } else if (user.role === 'buyer') {
+      roleDetails = await Buyer.findOne({ user: user._id })
+        .select('buyerType companyName businessRegistration interestedCrops purchaseHistory preferredQuantities')
+        .lean();
+    }
+
     res.status(200).json({
       success: true,
-      data: user
+      data: {
+        ...user.toObject(),
+        roleDetails
+      }
     });
   } catch (error) {
     next(error);
@@ -108,6 +124,44 @@ exports.deleteUser = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'User deleted successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Change user password
+// @route   PUT /api/admin/users/:id/change-password
+// @access  Private (Admin)
+exports.changeUserPassword = async (req, res, next) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Hash the new password
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully'
     });
   } catch (error) {
     next(error);
@@ -347,21 +401,41 @@ exports.getRequestDetails = async (req, res, next) => {
 // @access  Private (Admin)
 exports.getAnalyticsOverview = async (req, res, next) => {
   try {
-    const totalUsers = await User.countDocuments();
-    const totalFarmers = await User.countDocuments({ role: 'farmer' });
-    const totalBuyers = await User.countDocuments({ role: 'buyer' });
+    // Count from actual models, not User model with role filter
+    const totalFarmers = await Farmer.countDocuments();
+    const totalBuyers = await Buyer.countDocuments();
+    const totalAdmins = await Admin.countDocuments();
+    const totalUsers = totalFarmers + totalBuyers + totalAdmins;
+    
     const totalCrops = await Crop.countDocuments();
     const activeCrops = await Crop.countDocuments({ status: 'active' });
+    const soldOutCrops = await Crop.countDocuments({ status: 'sold_out' });
+    
     const totalRequests = await Request.countDocuments();
     const pendingRequests = await Request.countDocuments({ status: 'pending' });
     const completedRequests = await Request.countDocuments({ status: 'completed' });
+    const confirmedRequests = await Request.countDocuments({ status: 'confirmed' });
 
     res.status(200).json({
       success: true,
       data: {
-        users: { total: totalUsers, farmers: totalFarmers, buyers: totalBuyers },
-        crops: { total: totalCrops, active: activeCrops },
-        requests: { total: totalRequests, pending: pendingRequests, completed: completedRequests }
+        users: { 
+          total: totalUsers, 
+          farmers: totalFarmers, 
+          buyers: totalBuyers,
+          admins: totalAdmins 
+        },
+        crops: { 
+          total: totalCrops, 
+          active: activeCrops,
+          soldOut: soldOutCrops 
+        },
+        requests: { 
+          total: totalRequests, 
+          pending: pendingRequests, 
+          completed: completedRequests,
+          confirmed: confirmedRequests 
+        }
       }
     });
   } catch (error) {
@@ -503,17 +577,37 @@ exports.getUserAnalytics = async (req, res, next) => {
       }
     ]);
 
-    // User locations (top districts)
-    const topDistricts = await Farmer.aggregate([
+    // User locations (top districts) - Combine farmers and buyers
+    const farmerDistricts = await Farmer.aggregate([
+      { $match: { 'location.district': { $exists: true, $ne: null, $ne: '' } } },
       {
         $group: {
           _id: '$location.district',
           count: { $sum: 1 }
         }
-      },
-      { $sort: { count: -1 } },
-      { $limit: 10 }
+      }
     ]);
+
+    const buyerDistricts = await Buyer.aggregate([
+      { $match: { 'location.district': { $exists: true, $ne: null, $ne: '' } } },
+      {
+        $group: {
+          _id: '$location.district',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Merge and sum districts from both collections
+    const districtMap = new Map();
+    [...farmerDistricts, ...buyerDistricts].forEach(item => {
+      const district = item._id;
+      districtMap.set(district, (districtMap.get(district) || 0) + item.count);
+    });
+
+    const topDistricts = Array.from(districtMap, ([_id, count]) => ({ _id, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
 
     // Most active users (by requests/crops)
     const mostActiveUsers = await Request.aggregate([
@@ -536,21 +630,36 @@ exports.getUserAnalytics = async (req, res, next) => {
       { $unwind: '$buyerInfo' }
     ]);
 
+    // Merge registration trends
+    const dateMap = new Map();
+    farmerRegistrations.forEach(item => {
+      dateMap.set(item._id, { date: item._id, farmers: item.count, buyers: 0 });
+    });
+    buyerRegistrations.forEach(item => {
+      if (dateMap.has(item._id)) {
+        dateMap.get(item._id).buyers = item.count;
+      } else {
+        dateMap.set(item._id, { date: item._id, farmers: 0, buyers: item.count });
+      }
+    });
+    
+    const registrationTrend = Array.from(dateMap.values())
+      .sort((a, b) => a.date.localeCompare(b.date));
+
     res.status(200).json({
       success: true,
       data: {
-        summary: {
-          farmers: { total: totalFarmers, active: activeFarmers, verified: verifiedFarmers },
-          buyers: { total: totalBuyers, active: activeBuyers, verified: verifiedBuyers },
-          admins: { total: totalAdmins }
-        },
-        registrations: {
-          farmers: farmerRegistrations,
-          buyers: buyerRegistrations
-        },
+        totalFarmers,
+        totalBuyers,
+        totalAdmins,
+        activeFarmers,
+        activeBuyers,
+        verifiedFarmers,
+        verifiedBuyers,
+        registrationTrend,
         buyerTypes,
         topDistricts,
-        mostActiveUsers
+        activeUsers: mostActiveUsers
       }
     });
   } catch (error) {
@@ -841,18 +950,18 @@ exports.getDashboardAnalytics = async (req, res, next) => {
       .limit(5)
       .select('name mobile createdAt');
 
-    const recentCrops = await Crop.find()
+    const recentCrops = await Crop.find({ isVisible: { $ne: false } })
       .sort({ createdAt: -1 })
       .limit(5)
       .populate('farmer', 'name mobile')
-      .select('name category price createdAt');
+      .select('name variety category price quantity availableQuantity location createdAt');
 
     const recentRequests = await Request.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .populate('buyer', 'name mobile')
-      .populate('crop', 'name')
-      .select('status createdAt');
+      .populate('buyer', 'name mobile buyerType')
+      .populate('crop', 'name quantity')
+      .select('status requestedQuantity buyerType createdAt');
 
     // Transaction value
     const completedValue = await Request.aggregate([
@@ -973,11 +1082,26 @@ exports.getActivityLogs = async (req, res, next) => {
 exports.getSystemHealth = async (req, res, next) => {
   try {
     const mongoose = require('mongoose');
+    const os = require('os');
     
     const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
     
-    // Database stats
-    const stats = await mongoose.connection.db.stats();
+    // Database stats with real response time
+    const dbStartTime = Date.now();
+    try {
+      await mongoose.connection.db.admin().ping();
+    } catch (err) {
+      console.error('DB ping failed:', err);
+    }
+    const dbResponseTime = Date.now() - dbStartTime;
+    
+    // Get database size and statistics
+    let dbStats = null;
+    try {
+      dbStats = await mongoose.connection.db.stats();
+    } catch (err) {
+      console.error('Failed to get DB stats:', err);
+    }
     
     // Collection counts
     const farmerCount = await Farmer.countDocuments();
@@ -985,32 +1109,76 @@ exports.getSystemHealth = async (req, res, next) => {
     const cropCount = await Crop.countDocuments();
     const requestCount = await Request.countDocuments();
 
-    // Recent errors (if you have error logging)
-    const recentErrors = [];
+    // Memory usage
+    const memUsage = process.memoryUsage();
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+
+    // CPU usage (average load)
+    const cpuLoad = os.loadavg()[0]; // 1 minute average
+    const cpuCount = os.cpus().length;
+    const cpuUsagePercent = Math.min((cpuLoad / cpuCount) * 100, 100);
+
+    // Check service health (simplified - could check actual endpoints)
+    const servicesHealthy = {
+      sms: true, // Could ping SMS service
+      ivr: true, // Could ping IVR service
+      notifications: true // Could check notification queue
+    };
+
+    // Determine overall status
+    const overallStatus = dbStatus === 'connected' && 
+                          cpuUsagePercent < 90 && 
+                          (usedMem / totalMem) < 0.9 ? 'healthy' : 'warning';
 
     res.status(200).json({
       success: true,
       data: {
-        status: 'healthy',
+        status: overallStatus,
+        timestamp: new Date().toISOString(),
         database: {
-          status: dbStatus,
-          collections: stats.collections,
-          dataSize: Math.round(stats.dataSize / (1024 * 1024)) + ' MB',
-          storageSize: Math.round(stats.storageSize / (1024 * 1024)) + ' MB',
-          indexes: stats.indexes
+          status: dbStatus === 'connected' ? 'healthy' : 'unhealthy',
+          responseTime: dbResponseTime,
+          connections: mongoose.connection.readyState,
+          size: dbStats ? {
+            dataSize: Math.round((dbStats.dataSize || 0) / (1024 * 1024) * 100) / 100, // MB
+            storageSize: Math.round((dbStats.storageSize || 0) / (1024 * 1024) * 100) / 100, // MB
+            indexSize: Math.round((dbStats.indexSize || 0) / (1024 * 1024) * 100) / 100, // MB
+            collections: dbStats.collections || 0,
+            indexes: dbStats.indexes || 0,
+            objects: dbStats.objects || 0
+          } : null
         },
+        server: {
+          uptime: Math.round(process.uptime()),
+          memory: {
+            used: Math.round(memUsage.heapUsed / (1024 * 1024)),
+            total: Math.round(memUsage.heapTotal / (1024 * 1024)),
+            percentage: Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100),
+            system: {
+              total: Math.round(totalMem / (1024 * 1024)),
+              used: Math.round(usedMem / (1024 * 1024)),
+              free: Math.round(freeMem / (1024 * 1024)),
+              percentage: Math.round((usedMem / totalMem) * 100)
+            }
+          },
+          cpu: {
+            usage: Math.round(cpuUsagePercent * 10) / 10,
+            cores: cpuCount,
+            loadAverage: os.loadavg().map(load => Math.round(load * 100) / 100)
+          },
+          platform: os.platform(),
+          nodeVersion: process.version
+        },
+        services: servicesHealthy,
         counts: {
           farmers: farmerCount,
           buyers: buyerCount,
           crops: cropCount,
-          requests: requestCount
-        },
-        uptime: process.uptime(),
-        memory: {
-          used: Math.round(process.memoryUsage().heapUsed / (1024 * 1024)) + ' MB',
-          total: Math.round(process.memoryUsage().heapTotal / (1024 * 1024)) + ' MB'
-        },
-        recentErrors
+          requests: requestCount,
+          total: farmerCount + buyerCount + cropCount + requestCount
+        }
       }
     });
   } catch (error) {
@@ -1023,25 +1191,60 @@ exports.getSystemHealth = async (req, res, next) => {
 // @access  Private (Admin)
 exports.getSystemStats = async (req, res, next) => {
   try {
-    const os = require('os');
+    // Get real active users (users active in last 15 minutes)
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+    
+    const activeFarmers = await Farmer.countDocuments({ 
+      lastActive: { $gte: fifteenMinutesAgo } 
+    });
+    const activeBuyers = await Buyer.countDocuments({ 
+      lastActive: { $gte: fifteenMinutesAgo } 
+    });
+    const activeUsers = activeFarmers + activeBuyers;
+
+    // Get recent request activity (last minute)
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const recentRequests = await Request.countDocuments({
+      createdAt: { $gte: oneMinuteAgo }
+    });
+
+    // Calculate average response time from recent requests
+    const recentCompletedRequests = await Request.find({
+      status: 'completed',
+      completedAt: { $exists: true },
+      createdAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) } // last hour
+    }).limit(100);
+
+    let avgResponseTime = 0;
+    if (recentCompletedRequests.length > 0) {
+      const totalTime = recentCompletedRequests.reduce((sum, req) => {
+        return sum + (new Date(req.completedAt) - new Date(req.createdAt));
+      }, 0);
+      avgResponseTime = Math.round(totalTime / recentCompletedRequests.length / 1000); // in seconds
+    }
+
+    // Error rate calculation (requests failed in last hour)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const totalRecentRequests = await Request.countDocuments({
+      createdAt: { $gte: oneHourAgo }
+    });
+    const failedRequests = await Request.countDocuments({
+      status: { $in: ['cancelled', 'farmer_rejected'] },
+      createdAt: { $gte: oneHourAgo }
+    });
+    const errorRate = totalRecentRequests > 0 
+      ? Math.round((failedRequests / totalRecentRequests) * 1000) / 10 
+      : 0;
     
     res.status(200).json({
       success: true,
       data: {
-        server: {
-          platform: os.platform(),
-          architecture: os.arch(),
-          cpus: os.cpus().length,
-          totalMemory: Math.round(os.totalmem() / (1024 * 1024 * 1024)) + ' GB',
-          freeMemory: Math.round(os.freemem() / (1024 * 1024 * 1024)) + ' GB',
-          uptime: Math.round(os.uptime() / 3600) + ' hours'
-        },
-        process: {
-          nodeVersion: process.version,
-          pid: process.pid,
-          uptime: Math.round(process.uptime() / 3600) + ' hours',
-          memoryUsage: process.memoryUsage()
-        }
+        timestamp: new Date().toISOString(),
+        activeUsers,
+        activeSessions: activeUsers, // Simplified: one session per user
+        requestsPerMinute: recentRequests,
+        averageResponseTime: avgResponseTime,
+        errorRate
       }
     });
   } catch (error) {
@@ -1200,6 +1403,132 @@ exports.generateRevenueReport = async (req, res, next) => {
         totalRevenue,
         revenueByCategory,
         revenueOverTime
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get system settings
+// @route   GET /api/admin/settings/system
+// @access  Private (Admin)
+exports.getSystemSettings = async (req, res, next) => {
+  try {
+    const settings = await SystemSettings.getSettings();
+    
+    res.status(200).json({
+      success: true,
+      data: settings
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update system settings
+// @route   PUT /api/admin/settings/system
+// @access  Private (Admin)
+exports.updateSystemSettings = async (req, res, next) => {
+  try {
+    const settings = await SystemSettings.getSettings();
+    const adminId = req.user._id;
+    
+    const {
+      emailSettings,
+      smsSettings,
+      notificationSettings,
+      userSettings,
+      sessionSettings,
+      securitySettings,
+      apiSettings,
+      backupSettings,
+      maintenanceMessage
+    } = req.body;
+    
+    // Update settings
+    if (emailSettings) settings.emailSettings = { ...settings.emailSettings, ...emailSettings };
+    if (smsSettings) settings.smsSettings = { ...settings.smsSettings, ...smsSettings };
+    if (notificationSettings) settings.notificationSettings = { ...settings.notificationSettings, ...notificationSettings };
+    if (userSettings) settings.userSettings = { ...settings.userSettings, ...userSettings };
+    if (sessionSettings) settings.sessionSettings = { ...settings.sessionSettings, ...sessionSettings };
+    if (securitySettings) settings.securitySettings = { ...settings.securitySettings, ...securitySettings };
+    if (apiSettings) settings.apiSettings = { ...settings.apiSettings, ...apiSettings };
+    if (backupSettings) settings.backupSettings = { ...settings.backupSettings, ...backupSettings };
+    if (maintenanceMessage) settings.maintenanceMessage = maintenanceMessage;
+    
+    settings.lastUpdatedBy = adminId;
+    settings.lastUpdatedAt = new Date();
+    
+    await settings.save();
+    
+    res.status(200).json({
+      success: true,
+      message: 'System settings updated successfully',
+      data: settings
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Toggle maintenance mode
+// @route   POST /api/admin/settings/maintenance
+// @access  Private (Admin)
+exports.toggleMaintenanceMode = async (req, res, next) => {
+  try {
+    const { isOperational, reason } = req.body;
+    const adminId = req.user._id;
+    
+    if (typeof isOperational !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'isOperational must be a boolean value'
+      });
+    }
+    
+    const settings = await SystemSettings.getSettings();
+    await settings.toggleMaintenance(isOperational, adminId, reason || '');
+    
+    res.status(200).json({
+      success: true,
+      message: `System ${isOperational ? 'operational' : 'maintenance'} mode enabled`,
+      data: {
+        isOperational: settings.isOperational,
+        maintenanceMessage: settings.maintenanceMessage,
+        currentMaintenanceStart: settings.currentMaintenanceStart,
+        maintenanceLogs: settings.maintenanceLogs.slice(-10) // Return last 10 logs
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get maintenance logs
+// @route   GET /api/admin/settings/maintenance/logs
+// @access  Private (Admin)
+exports.getMaintenanceLogs = async (req, res, next) => {
+  try {
+    const { limit = 20, page = 1 } = req.query;
+    const settings = await SystemSettings.getSettings();
+    
+    const logs = settings.maintenanceLogs
+      .sort((a, b) => b.startTime - a.startTime)
+      .slice((page - 1) * limit, page * limit);
+    
+    const populatedLogs = await SystemSettings.populate(logs, {
+      path: 'updatedBy',
+      select: 'name email'
+    });
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        logs: populatedLogs,
+        total: settings.maintenanceLogs.length,
+        page: parseInt(page),
+        pages: Math.ceil(settings.maintenanceLogs.length / limit)
       }
     });
   } catch (error) {

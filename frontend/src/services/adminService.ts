@@ -21,6 +21,11 @@ export const deleteUser = async (userId: string) => {
   return response.data;
 };
 
+export const changeUserPassword = async (userId: string, newPassword: string) => {
+  const response = await api.put(`/admin/users/${userId}/change-password`, { newPassword });
+  return response.data;
+};
+
 export const verifyUser = async (userId: string) => {
   const response = await api.put(`/admin/users/${userId}/verify`);
   return response.data;
@@ -160,12 +165,34 @@ export const generateRevenueReport = async (params?: { startDate?: string; endDa
   return response.data;
 };
 
+// System Settings
+export const getSystemSettings = async () => {
+  const response = await api.get('/admin/settings/system');
+  return response.data;
+};
+
+export const updateSystemSettings = async (settings: any) => {
+  const response = await api.put('/admin/settings/system', settings);
+  return response.data;
+};
+
+export const toggleMaintenanceMode = async (isOperational: boolean, reason?: string) => {
+  const response = await api.post('/admin/settings/maintenance', { isOperational, reason });
+  return response.data;
+};
+
+export const getMaintenanceLogs = async (params?: { limit?: number; page?: number }) => {
+  const response = await api.get('/admin/settings/maintenance/logs', { params });
+  return response.data;
+};
+
 const adminService = {
   // Users
   getAllUsers,
   getUserDetails,
   updateUser,
   deleteUser,
+  changeUserPassword,
   verifyUser,
   activateUser,
   deactivateUser,
@@ -198,7 +225,12 @@ const adminService = {
   // Reports
   generateUserReport,
   generateTransactionReport,
-  generateRevenueReport
+  generateRevenueReport,
+  // System Settings
+  getSystemSettings,
+  updateSystemSettings,
+  toggleMaintenanceMode,
+  getMaintenanceLogs
 };
 
 export default adminService;

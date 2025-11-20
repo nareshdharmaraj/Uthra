@@ -12,6 +12,7 @@ router.get('/users', adminController.getAllUsers);
 router.get('/users/:id', adminController.getUserDetails);
 router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
+router.put('/users/:id/change-password', adminController.changeUserPassword);
 router.put('/users/:id/verify', adminController.verifyUser);
 router.put('/users/:id/activate', adminController.activateUser);
 router.put('/users/:id/deactivate', adminController.deactivateUser);
@@ -55,5 +56,11 @@ router.get('/system/stats', adminController.getSystemStats);
 router.get('/reports/users', adminController.generateUserReport);
 router.get('/reports/transactions', adminController.generateTransactionReport);
 router.get('/reports/revenue', adminController.generateRevenueReport);
+
+// System Settings
+router.get('/settings/system', adminController.getSystemSettings);
+router.put('/settings/system', adminController.updateSystemSettings);
+router.post('/settings/maintenance', adminController.toggleMaintenanceMode);
+router.get('/settings/maintenance/logs', adminController.getMaintenanceLogs);
 
 module.exports = router;

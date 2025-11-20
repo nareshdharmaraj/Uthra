@@ -1,27 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services';
 import '../../styles/Admin.css';
+import { formatQuantity, formatPriceWithUnit } from '../../utils/unitConversion';
 
 interface Crop {
   _id: string;
-  cropType: string;
+  name: string;
   variety?: string;
-  quantity: number | { value: number; unit: string };
-  unit?: string;
-  pricePerUnit: number | { value: number; unit: string };
+  quantity: { value: number; unit: string };
+  availableQuantity: { value: number; unit: string };
+  price: { value: number; unit: string };
   category: string;
   description?: string;
-  location: string;
-  district: string;
-  taluk: string;
-  availableDate: string;
+  location?: {
+    village?: string;
+    taluk?: string;
+    district?: string;
+    state?: string;
+    pincode?: string;
+  };
+  availableFrom: string;
+  availableTo?: string;
   harvestDate?: string;
   status: string;
   isVerified: boolean;
   farmer: {
     _id: string;
     name: string;
-    phone: string;
+    mobile: string;
+    location?: any;
   };
   createdAt: string;
 }
@@ -108,8 +115,8 @@ const Crops: React.FC = () => {
 
   const getActionMessage = () => {
     switch (modalAction) {
-      case 'delete': return `Are you sure you want to delete crop "${selectedCrop?.cropType}"? This action cannot be undone.`;
-      case 'verify': return `Verify crop "${selectedCrop?.cropType}"?`;
+      case 'delete': return `Are you sure you want to delete crop "${selectedCrop?.name || 'this crop'}"? This action cannot be undone.`;
+      case 'verify': return `Verify crop "${selectedCrop?.name || 'this crop'}"?`;
       default: return '';
     }
   };
@@ -180,42 +187,43 @@ const Crops: React.FC = () => {
       </div>
 
       {/* Crops Table */}
-      <div className="admin-table-container">
+      <div className="admin-table-container" style={{ overflowX: 'auto' }}>
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Crop Type</th>
-              <th>Variety</th>
+              <th>Crop Name</th>
               <th>Quantity</th>
               <th>Price</th>
               <th>Category</th>
               <th>Farmer</th>
-              <th>District</th>
               <th>Status</th>
               <th>Verified</th>
-              <th>Added</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {crops.length === 0 ? (
               <tr>
-                <td colSpan={11} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
                   No crops found
                 </td>
               </tr>
             ) : (
               crops.map((crop) => {
-                const quantity = typeof crop.quantity === 'object' ? crop.quantity.value : crop.quantity;
-                const unit = typeof crop.quantity === 'object' ? crop.quantity.unit : crop.unit;
-                const price = typeof crop.pricePerUnit === 'object' ? crop.pricePerUnit.value : crop.pricePerUnit;
+                const quantityDisplay = formatQuantity(crop.quantity || crop.availableQuantity);
+                const priceDisplay = formatPriceWithUnit(crop.price);
                 
                 return (
                 <tr key={crop._id}>
-                  <td><strong>{crop.cropType}</strong></td>
-                  <td>{crop.variety || 'N/A'}</td>
-                  <td>{quantity} {unit}</td>
-                  <td>₹{price}/{unit}</td>
+                  <td>
+                    <div>
+                      <strong>{crop.name || 'N/A'}</strong>
+                      {crop.variety && <div style={{ fontSize: '0.85rem', color: '#7f8c8d' }}>{crop.variety}</div>}
+                      {crop.location?.district && <div style={{ fontSize: '0.8rem', color: '#95a5a6' }}>{crop.location.district}</div>}
+                    </div>
+                  </td>
+                  <td>{quantityDisplay}</td>
+                  <td>{priceDisplay}</td>
                   <td>
                     <span className="status-badge" style={{ background: '#e3f2fd', color: '#0d47a1' }}>
                       {crop.category}
@@ -225,11 +233,10 @@ const Crops: React.FC = () => {
                     <div>
                       <div style={{ fontWeight: 600 }}>{crop.farmer?.name || 'N/A'}</div>
                       <div style={{ fontSize: '0.85rem', color: '#7f8c8d' }}>
-                        {crop.farmer?.phone || ''}
+                        {crop.farmer?.mobile || ''}
                       </div>
                     </div>
                   </td>
-                  <td>{crop.district}</td>
                   <td>
                     <span className={`status-badge ${
                       crop.status === 'active' ? 'active' :
@@ -243,7 +250,6 @@ const Crops: React.FC = () => {
                       {crop.isVerified ? 'Verified' : 'Unverified'}
                     </span>
                   </td>
-                  <td>{new Date(crop.createdAt).toLocaleDateString()}</td>
                   <td>
                     <div className="table-actions">
                       <button 
@@ -286,27 +292,30 @@ const Crops: React.FC = () => {
             </div>
             <div className="modal-body">
               {modalAction === 'view' ? (() => {
-                const quantity = typeof selectedCrop.quantity === 'object' ? selectedCrop.quantity.value : selectedCrop.quantity;
-                const unit = typeof selectedCrop.quantity === 'object' ? selectedCrop.quantity.unit : selectedCrop.unit;
-                const price = typeof selectedCrop.pricePerUnit === 'object' ? selectedCrop.pricePerUnit.value : selectedCrop.pricePerUnit;
-                const totalValue = quantity * price;
+                const quantityDisplay = formatQuantity(selectedCrop.quantity || selectedCrop.availableQuantity);
+                const priceDisplay = formatPriceWithUnit(selectedCrop.price);
+                const location = selectedCrop.location;
+                const locationStr = location ? 
+                  [location.village, location.taluk, location.district, location.state, location.pincode]
+                    .filter(Boolean)
+                    .join(', ') || 'Not specified' : 'Not specified';
                 
                 return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div>
-                    <strong>Crop Type:</strong> {selectedCrop.cropType}
+                    <strong>Crop Name:</strong> {selectedCrop.name || 'N/A'}
                   </div>
                   <div>
                     <strong>Variety:</strong> {selectedCrop.variety || 'N/A'}
                   </div>
                   <div>
-                    <strong>Quantity:</strong> {quantity} {unit}
+                    <strong>Quantity:</strong> {quantityDisplay}
                   </div>
                   <div>
-                    <strong>Price:</strong> ₹{price}/{unit}
+                    <strong>Price:</strong> {priceDisplay}
                   </div>
                   <div>
-                    <strong>Total Value:</strong> ₹{totalValue.toLocaleString()}
+                    <strong>Original Quantity:</strong> {selectedCrop.quantity?.value || 0} {selectedCrop.quantity?.unit || 'kg'}
                   </div>
                   <div>
                     <strong>Category:</strong> {selectedCrop.category}
@@ -315,17 +324,22 @@ const Crops: React.FC = () => {
                     <strong>Description:</strong> {selectedCrop.description || 'No description'}
                   </div>
                   <div>
-                    <strong>Location:</strong> {selectedCrop.location}, {selectedCrop.taluk}, {selectedCrop.district}
+                    <strong>Location:</strong> {locationStr}
                   </div>
                   <div>
-                    <strong>Farmer:</strong> {selectedCrop.farmer?.name} ({selectedCrop.farmer?.phone})
+                    <strong>Farmer:</strong> {selectedCrop.farmer?.name || 'N/A'} ({selectedCrop.farmer?.mobile || 'N/A'})
                   </div>
                   <div>
-                    <strong>Available Date:</strong> {new Date(selectedCrop.availableDate).toLocaleDateString()}
+                    <strong>Available From:</strong> {selectedCrop.availableFrom ? new Date(selectedCrop.availableFrom).toLocaleDateString('en-IN') : 'N/A'}
                   </div>
+                  {selectedCrop.availableTo && (
+                    <div>
+                      <strong>Available To:</strong> {new Date(selectedCrop.availableTo).toLocaleDateString('en-IN')}
+                    </div>
+                  )}
                   {selectedCrop.harvestDate && (
                     <div>
-                      <strong>Harvest Date:</strong> {new Date(selectedCrop.harvestDate).toLocaleDateString()}
+                      <strong>Harvest Date:</strong> {new Date(selectedCrop.harvestDate).toLocaleDateString('en-IN')}
                     </div>
                   )}
                   <div>
@@ -335,7 +349,7 @@ const Crops: React.FC = () => {
                     <strong>Verified:</strong> {selectedCrop.isVerified ? 'Yes' : 'No'}
                   </div>
                   <div>
-                    <strong>Added:</strong> {new Date(selectedCrop.createdAt).toLocaleString()}
+                    <strong>Added:</strong> {new Date(selectedCrop.createdAt).toLocaleString('en-IN')}
                   </div>
                 </div>
                 );

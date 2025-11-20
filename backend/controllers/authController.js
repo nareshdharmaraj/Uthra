@@ -317,6 +317,7 @@ exports.completeRegistrationStep4 = async (req, res, next) => {
 exports.login = async (req, res, next) => {
   try {
     const mongoose = require('mongoose');
+    const SystemSettings = require('../models/SystemSettings');
     console.log('🔐 Login attempt:', { mobile: req.body.mobile });
     console.log('🔍 Mongoose connection state:', mongoose.connection.readyState);
     
@@ -338,6 +339,19 @@ exports.login = async (req, res, next) => {
         success: false,
         message: 'Invalid credentials'
       });
+    }
+
+    // Check maintenance mode for non-admin users
+    if (user.role !== 'admin') {
+      const settings = await SystemSettings.getSettings();
+      if (!settings.isOperational) {
+        return res.status(503).json({
+          success: false,
+          message: 'System is currently under maintenance. If you perform any tasks, they will be lost. Please try after an hour.',
+          maintenanceMode: true,
+          isOperational: false
+        });
+      }
     }
 
     // Check if registration is complete
@@ -420,9 +434,21 @@ exports.login = async (req, res, next) => {
 // @access  Public
 exports.loginWithPIN = async (req, res, next) => {
   try {
+    const SystemSettings = require('../models/SystemSettings');
     const { mobile, pin } = req.body;
 
     console.log(`📞 IVR Login attempt - Mobile: ${mobile}`);
+
+    // Check maintenance mode (farmers can't login during maintenance)
+    const settings = await SystemSettings.getSettings();
+    if (!settings.isOperational) {
+      return res.status(503).json({
+        success: false,
+        message: 'System is currently under maintenance. Please try after an hour.',
+        maintenanceMode: true,
+        isOperational: false
+      });
+    }
 
     // Find farmer in farmers collection
     const user = await Farmer.findOne({ mobile });
