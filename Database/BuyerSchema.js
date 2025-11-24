@@ -12,7 +12,7 @@ const buyerSchema = new mongoose.Schema({
       validator: function(v) {
         return /^[0-9]{10}$/.test(v);
       },
-      message: props => `${props.value} is not a valid 10-digit mobile number!`
+      message: props => `${props.value} is not a valid 10-digit mobile number! Must be exactly 10 digits.`
     }
   },
   
@@ -77,7 +77,9 @@ const buyerSchema = new mongoose.Schema({
   buyerType: {
     type: String,
     enum: ['individual', 'company'],
-    required: true
+    required: function() {
+      return this.registrationStage >= 2;
+    }
   },
   
   // Company reference (if buyer is part of a company they joined)
@@ -90,8 +92,8 @@ const buyerSchema = new mongoose.Schema({
   businessName: { 
     type: String, 
     required: function() {
-      // Required for both individual and company buyers
-      return true;
+      // Required only after step 1 registration
+      return this.registrationStage >= 2;
     },
     trim: true 
   },
@@ -113,7 +115,9 @@ const buyerSchema = new mongoose.Schema({
   businessType: {
     type: String,
     enum: ['retailer', 'wholesaler', 'restaurant', 'exporter', 'processor', 'individual'],
-    required: true
+    required: function() {
+      return this.registrationStage >= 2;
+    }
   },
   
   organizationName: { type: String, trim: true },

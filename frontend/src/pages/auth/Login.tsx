@@ -21,6 +21,24 @@ const Login: React.FC = () => {
 
   const { user, isLoading, error, isAuthenticated } = useSelector((state: RootState) => state.auth);
 
+  // Security: Redirect authenticated users away from login
+  useEffect(() => {
+    if (isAuthenticated && user && !loginAttemptedRef.current) {
+      toast.info('You are already logged in. Redirecting to dashboard...');
+      setTimeout(() => {
+        if (user.role === 'buyer') {
+          if (user.buyerType === 'company') {
+            navigate('/company-buyer');
+          } else {
+            navigate('/individual-buyer');
+          }
+        } else {
+          navigate(`/${user.role}`);
+        }
+      }, 1500);
+    }
+  }, [isAuthenticated, user, navigate]);
+
   const {
     register,
     handleSubmit,

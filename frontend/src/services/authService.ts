@@ -17,7 +17,11 @@ export const authService = {
       const response = await api.post('/auth/register/initiate', data);
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      // Handle specific validation errors
+      if (error instanceof Error && error.message) {
+        throw new Error(error.message);
+      }
+      throw new Error('Registration failed. Please check your details and try again.');
     }
   },
 

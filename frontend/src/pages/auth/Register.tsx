@@ -41,6 +41,8 @@ interface Step3FarmerFormData {
   ifscCode: string;
   bankName: string;
   pin: string;
+  password: string;
+  confirmPassword: string;
 }
 
 interface Step3BuyerFormData {
@@ -85,6 +87,24 @@ const Register: React.FC = () => {
   });
 
   const selectedRole = watch('role');
+
+  // Security: Redirect authenticated users away from registration
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      toast.info('You are already logged in. Redirecting to dashboard...');
+      setTimeout(() => {
+        if (user.role === 'buyer') {
+          if (user.buyerType === 'company') {
+            navigate('/company-buyer');
+          } else {
+            navigate('/individual-buyer');
+          }
+        } else {
+          navigate(`/${user.role}`);
+        }
+      }, 1500);
+    }
+  }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
     if (error) {
@@ -187,6 +207,7 @@ const Register: React.FC = () => {
           },
         },
         pin: data.pin,
+        password: data.password,
       })
     );
   };
@@ -278,9 +299,18 @@ const Register: React.FC = () => {
           {...register('name', {
             required: 'Name is required',
             minLength: { value: 3, message: 'Name must be at least 3 characters' },
+            pattern: {
+              value: /^[a-zA-Z\s]+$/,
+              message: 'Name should contain only letters and spaces'
+            }
           })}
           className="form-control"
           placeholder="Enter your full name"
+          onInput={(e) => {
+            // Allow only letters and spaces
+            const target = e.target as HTMLInputElement;
+            target.value = target.value.replace(/[^a-zA-Z\s]/g, '');
+          }}
         />
         {errors.name && <span className="error">{errors.name.message}</span>}
       </div>
@@ -293,12 +323,21 @@ const Register: React.FC = () => {
             required: 'Mobile number is required',
             pattern: {
               value: /^[0-9]{10}$/,
-              message: 'Please enter a valid 10-digit mobile number',
+              message: 'Please enter a valid 10-digit mobile number (only numbers)',
             },
+            maxLength: {
+              value: 10,
+              message: 'Mobile number must be exactly 10 digits'
+            }
           })}
           className="form-control"
-          placeholder="10-digit mobile number"
+          placeholder="10-digit mobile number (e.g., 9876543210)"
           maxLength={10}
+          onInput={(e) => {
+            // Allow only digits
+            const target = e.target as HTMLInputElement;
+            target.value = target.value.replace(/[^0-9]/g, '');
+          }}
         />
         {errors.mobile && <span className="error">{errors.mobile.message}</span>}
       </div>
@@ -437,9 +476,19 @@ const Register: React.FC = () => {
         <label>Account Holder Name *</label>
         <input
           type="text"
-          {...register('accountHolderName', { required: 'Account holder name is required' })}
+          {...register('accountHolderName', { 
+            required: 'Account holder name is required',
+            pattern: {
+              value: /^[a-zA-Z\s]+$/,
+              message: 'Account holder name should contain only letters and spaces'
+            }
+          })}
           className="form-control"
           placeholder="As per bank records"
+          onInput={(e) => {
+            const target = e.target as HTMLInputElement;
+            target.value = target.value.replace(/[^a-zA-Z\s]/g, '');
+          }}
         />
         {errors.accountHolderName && <span className="error">{errors.accountHolderName.message}</span>}
       </div>
@@ -451,10 +500,19 @@ const Register: React.FC = () => {
             type="text"
             {...register('accountNumber', {
               required: 'Account number is required',
-              minLength: { value: 9, message: 'Invalid account number' },
+              minLength: { value: 9, message: 'Account number must be at least 9 digits' },
+              maxLength: { value: 18, message: 'Account number cannot exceed 18 digits' },
+              pattern: {
+                value: /^[0-9]+$/,
+                message: 'Account number should contain only numbers'
+              }
             })}
             className="form-control"
-            placeholder="Bank account number"
+            placeholder="Bank account number (numbers only)"
+            onInput={(e) => {
+              const target = e.target as HTMLInputElement;
+              target.value = target.value.replace(/[^0-9]/g, '');
+            }}
           />
           {errors.accountNumber && <span className="error">{errors.accountNumber.message}</span>}
         </div>
@@ -506,6 +564,35 @@ const Register: React.FC = () => {
         />
         {errors.pin && <span className="error">{errors.pin.message}</span>}
         <small className="form-text">You'll use this PIN to access your account via phone call</small>
+      </div>
+
+      <div className="form-group">
+        <label>Create Password (for Web Access) *</label>
+        <input
+          type="password"
+          {...register('password', {
+            required: 'Password is required',
+            minLength: { value: 6, message: 'Password must be at least 6 characters' },
+          })}
+          className="form-control"
+          placeholder="Enter password"
+        />
+        {errors.password && <span className="error">{errors.password.message}</span>}
+        <small className="form-text">You'll use this password to access your account on the website</small>
+      </div>
+
+      <div className="form-group">
+        <label>Confirm Password *</label>
+        <input
+          type="password"
+          {...register('confirmPassword', {
+            required: 'Please confirm password',
+            validate: (value) => value === watch('password') || 'Passwords do not match',
+          })}
+          className="form-control"
+          placeholder="Confirm password"
+        />
+        {errors.confirmPassword && <span className="error">{errors.confirmPassword.message}</span>}
       </div>
 
       <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>

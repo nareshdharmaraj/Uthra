@@ -7,17 +7,28 @@ const authController = require('../controllers/authController');
 
 // Validation rules
 const registerValidation = [
-  body('mobile').isMobilePhone('en-IN').withMessage('Please provide a valid mobile number'),
-  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('mobile')
+    .matches(/^[0-9]{10}$/)
+    .withMessage('Please provide a valid 10-digit mobile number (only numbers)'),
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Name is required')
+    .matches(/^[a-zA-Z\s]+$/)
+    .withMessage('Name should contain only letters and spaces'),
   body('role').isIn(['farmer', 'buyer', 'admin']).withMessage('Invalid role')
 ];
 
 const loginValidation = [
-  body('mobile').isMobilePhone('en-IN').withMessage('Please provide a valid mobile number')
+  body('mobile')
+    .matches(/^[0-9]{10}$/)
+    .withMessage('Please provide a valid 10-digit mobile number (only numbers)')
 ];
 
 const pinLoginValidation = [
-  body('mobile').isMobilePhone('en-IN').withMessage('Please provide a valid mobile number'),
+  body('mobile')
+    .matches(/^[0-9]{10}$/)
+    .withMessage('Please provide a valid Indian mobile number (10 digits starting with 6-9)'),
   body('pin').isLength({ min: 4, max: 6 }).withMessage('PIN must be 4-6 digits')
 ];
 

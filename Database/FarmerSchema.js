@@ -12,7 +12,7 @@ const farmerSchema = new mongoose.Schema({
       validator: function(v) {
         return /^[0-9]{10}$/.test(v);
       },
-      message: props => `${props.value} is not a valid 10-digit mobile number!`
+      message: props => `${props.value} is not a valid 10-digit mobile number! Must be exactly 10 digits.`
     }
   },
   
@@ -78,13 +78,17 @@ const farmerSchema = new mongoose.Schema({
   // Farm information
   farmSize: {
     type: Number,
-    required: true // in acres
+    required: function() {
+      return this.registrationStage >= 2;
+    } // in acres
   },
   
   farmingType: { 
     type: String, 
     enum: ['organic', 'conventional', 'mixed', 'other'],
-    required: true
+    required: function() {
+      return this.registrationStage >= 2;
+    }
   },
   
   crops: [{
@@ -102,20 +106,28 @@ const farmerSchema = new mongoose.Schema({
   bankDetails: {
     accountNumber: { 
       type: String,
-      required: true
+      required: function() {
+        return this.registrationStage >= 2;
+      }
     },
     ifscCode: { 
       type: String,
-      required: true,
+      required: function() {
+        return this.registrationStage >= 2;
+      },
       uppercase: true
     },
     bankName: { 
       type: String,
-      required: true
+      required: function() {
+        return this.registrationStage >= 2;
+      }
     },
     accountHolderName: { 
       type: String,
-      required: true
+      required: function() {
+        return this.registrationStage >= 2;
+      }
     }
   },
   

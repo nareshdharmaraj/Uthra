@@ -64,23 +64,74 @@ const Profile: React.FC = () => {
     try {
       setLoading(true);
       const response = await api.get('/farmers/profile');
-      setProfile(response.data.data || user);
+      const userData = response.data.data || user;
+      
+      // Helper to create proper farmSize object
+      const createFarmSize = (farmSizeValue: any): { value: number; unit: string; } => {
+        if (typeof farmSizeValue === 'number') {
+          return { value: farmSizeValue, unit: 'acres' };
+        }
+        if (farmSizeValue && typeof farmSizeValue === 'object' && farmSizeValue.value !== undefined) {
+          return farmSizeValue;
+        }
+        return { value: 0, unit: 'acres' };
+      };
+      
+      // Transform backend data structure to match frontend expectations
+      if (userData) {
+        console.log('🔍 Profile data received:', userData); // Debug log
+        const userAny = userData as any;
+        
+        setProfile({
+          name: userData.name || '',
+          mobile: userData.mobile || '',
+          email: userData.email || '',
+          farmerDetails: {
+            farmSize: createFarmSize(userAny.farmSize),
+            primaryCrops: userAny.crops || [],
+            farmingExperience: userAny.farmingExperience || 0,
+            farmLocation: {
+              village: userData.location?.village || '',
+              district: userData.location?.district || '',
+              state: userData.location?.state || '', // Will be empty as per DB data
+              pincode: userData.location?.pincode || ''
+            },
+            bankDetails: {
+              accountNumber: userAny.bankDetails?.accountNumber || '',
+              ifscCode: userAny.bankDetails?.ifscCode || '',
+              bankName: userAny.bankDetails?.bankName || '',
+              branchName: userAny.bankDetails?.branchName || '' // Not in DB, will be empty
+            },
+            organicCertified: (userData as any).farmingType === 'organic' || false
+          }
+        });
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
       // Use user from Redux if API fails
       if (user) {
-        // Transform user.farmerDetails to match profile structure
-        const userFarmerDetails = user.farmerDetails;
+        // Transform user data to match profile structure
+        const userAny = user as any;
+        
+        // Helper to create proper farmSize object
+        const createFarmSize = (farmSizeValue: any): { value: number; unit: string; } => {
+          if (typeof farmSizeValue === 'number') {
+            return { value: farmSizeValue, unit: 'acres' };
+          }
+          if (farmSizeValue && typeof farmSizeValue === 'object' && farmSizeValue.value !== undefined) {
+            return farmSizeValue;
+          }
+          return { value: 0, unit: 'acres' };
+        };
+        
         setProfile({
           name: user.name || '',
           mobile: user.mobile || '',
           email: user.email || '',
           farmerDetails: {
-            farmSize: typeof userFarmerDetails?.farmSize === 'number' 
-              ? { value: userFarmerDetails.farmSize, unit: 'acres' }
-              : userFarmerDetails?.farmSize || { value: 0, unit: 'acres' },
-            primaryCrops: userFarmerDetails?.crops || [],
-            farmingExperience: 0,
+            farmSize: createFarmSize(userAny.farmSize),
+            primaryCrops: userAny.crops || [],
+            farmingExperience: userAny.farmingExperience || 0,
             farmLocation: {
               village: user.location?.village || '',
               district: user.location?.district || '',
@@ -88,12 +139,12 @@ const Profile: React.FC = () => {
               pincode: user.location?.pincode || ''
             },
             bankDetails: {
-              accountNumber: userFarmerDetails?.bankDetails?.accountNumber || '',
-              ifscCode: userFarmerDetails?.bankDetails?.ifscCode || '',
-              bankName: userFarmerDetails?.bankDetails?.bankName || '',
-              branchName: ''
+              accountNumber: userAny.bankDetails?.accountNumber || '',
+              ifscCode: userAny.bankDetails?.ifscCode || '',
+              bankName: userAny.bankDetails?.bankName || '',
+              branchName: userAny.bankDetails?.branchName || ''
             },
-            organicCertified: userFarmerDetails?.farmingType === 'organic'
+            organicCertified: (user as any).farmingType === 'organic' || false
           }
         });
       }

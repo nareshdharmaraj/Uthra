@@ -15,26 +15,61 @@ const SystemSettings = require('../models/SystemSettings');
 exports.getAllUsers = async (req, res, next) => {
   try {
     const { role, isActive, page = 1, limit = 20 } = req.query;
+    
+    let users = [];
+    
+    // Query role-specific collections where users are actually stored
+    if (!role || role === 'farmer') {
+      const farmers = await Farmer.find(isActive ? { isActive: isActive === 'true' } : {})
+        .select('-password -pin')
+        .sort({ createdAt: -1 })
+        .lean();
+      
+      users = users.concat(farmers.map(farmer => ({
+        ...farmer,
+        phone: farmer.mobile, // Map mobile to phone for consistency
+        district: farmer.location?.district
+      })));
+    }
+    
+    if (!role || role === 'buyer') {
+      const buyers = await Buyer.find(isActive ? { isActive: isActive === 'true' } : {})
+        .select('-password -pin')
+        .sort({ createdAt: -1 })
+        .lean();
+      
+      users = users.concat(buyers.map(buyer => ({
+        ...buyer,
+        phone: buyer.mobile, // Map mobile to phone for consistency
+        district: buyer.location?.district
+      })));
+    }
+    
+    if (!role || role === 'admin') {
+      const admins = await Admin.find(isActive ? { isActive: isActive === 'true' } : {})
+        .select('-password -pin')
+        .sort({ createdAt: -1 })
+        .lean();
+      
+      users = users.concat(admins.map(admin => ({
+        ...admin,
+        phone: admin.mobile, // Map mobile to phone for consistency
+        district: admin.location?.district
+      })));
+    }
 
-    const query = {};
-    if (role) query.role = role;
-    if (isActive) query.isActive = isActive === 'true';
-
-    const users = await User.find(query)
-      .select('-password -pin')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
-
-    const count = await User.countDocuments(query);
-
+    // Apply pagination manually since we're combining results
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedUsers = users.slice(startIndex, endIndex);
+    
     res.status(200).json({
       success: true,
-      count: users.length,
-      total: count,
-      totalPages: Math.ceil(count / limit),
+      count: paginatedUsers.length,
+      total: users.length,
+      totalPages: Math.ceil(users.length / limit),
       currentPage: parseInt(page),
-      data: users
+      data: paginatedUsers
     });
   } catch (error) {
     next(error);

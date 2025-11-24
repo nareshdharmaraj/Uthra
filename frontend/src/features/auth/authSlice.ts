@@ -14,13 +14,16 @@ import {
 // Get user and token from localStorage
 const storedUser = authService.getCurrentUser();
 const storedToken = authService.getToken();
+const isExplicitLogin = localStorage.getItem('explicitLogin') === 'true';
 
 // Debug logging
 console.log('🔍 AuthSlice Init - storedUser:', storedUser);
 console.log('🔍 AuthSlice Init - buyerType:', storedUser?.buyerType);
+console.log('🔍 AuthSlice Init - explicitLogin:', isExplicitLogin);
 
-// Verify that both token and user exist for authentication
-const isValidAuth = !!(storedToken && storedUser);
+// Only authenticate if user explicitly logged in this session
+// This prevents auto-login when navigating to register or other pages
+const isValidAuth = !!(storedToken && storedUser && isExplicitLogin);
 
 const initialState: AuthState = {
   user: isValidAuth ? storedUser : null,
@@ -240,6 +243,8 @@ const authSlice = createSlice({
         state.tempBuyerType = null;
         state.tempUserId = null;
         state.registrationStage = 0;
+        // Mark as explicit login for completed registrations
+        localStorage.setItem('explicitLogin', 'true');
       })
       .addCase(registerStep4.rejected, (state, action) => {
         state.isLoading = false;
@@ -255,6 +260,8 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
+        // Mark as explicit login to allow future auth restoration
+        localStorage.setItem('explicitLogin', 'true');
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -273,6 +280,8 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
+        // Mark as explicit login to allow future auth restoration
+        localStorage.setItem('explicitLogin', 'true');
       })
       .addCase(pinLogin.rejected, (state, action) => {
         state.isLoading = false;
@@ -288,6 +297,9 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.tempUserId = null;
         state.registrationStage = 0;
+        // Clear session storage
+        localStorage.removeItem('explicitLogin');
+        sessionStorage.clear();
       });
   },
 });

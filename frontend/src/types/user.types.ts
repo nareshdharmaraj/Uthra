@@ -48,6 +48,7 @@ export interface User {
   location?: Location;
   farmerDetails?: FarmerDetails;
   buyerDetails?: BuyerDetails;
+  bankDetails?: BankDetails; // Bank details can be directly on user for farmers
   pin?: string; // For farmers (IVR)
   isVerified: boolean;
   isActive: boolean;
@@ -86,6 +87,7 @@ export interface RegisterStep3FarmerData {
   userId: string;
   farmerDetails: FarmerDetails;
   pin: string;
+  password: string;
 }
 
 export interface RegisterStep3BuyerData {

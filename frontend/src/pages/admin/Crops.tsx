@@ -44,11 +44,7 @@ const Crops: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalAction, setModalAction] = useState<'view' | 'delete' | 'verify'>('view');
 
-  useEffect(() => {
-    fetchCrops();
-  }, [filters]);
-
-  const fetchCrops = async () => {
+  const fetchCrops = React.useCallback(async () => {
     try {
       setLoading(true);
       const params: any = {};
@@ -62,7 +58,11 @@ const Crops: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    fetchCrops();
+  }, [fetchCrops]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;

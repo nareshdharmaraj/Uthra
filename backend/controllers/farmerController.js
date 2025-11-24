@@ -2,6 +2,7 @@ const Crop = require('../models/Crop');
 const Request = require('../models/Request');
 const CallLog = require('../models/CallLog');
 const User = require('../models/User');
+const Farmer = require('../models/Farmer');
 
 // @desc    Add new crop
 // @route   POST /api/farmers/crops
@@ -449,7 +450,8 @@ exports.getCallLogs = async (req, res, next) => {
 // @access  Private (Farmer)
 exports.getProfile = async (req, res, next) => {
   try {
-    const farmer = await User.findById(req.user.id).select('-password -pin');
+    // Use the Farmer model since that's where farmer data is stored
+    const farmer = await Farmer.findById(req.user._id).select('-password -pin');
 
     if (!farmer) {
       return res.status(404).json({
@@ -463,6 +465,7 @@ exports.getProfile = async (req, res, next) => {
       data: farmer
     });
   } catch (error) {
+    console.error('Get profile error:', error);
     next(error);
   }
 };
@@ -474,21 +477,59 @@ exports.updateProfile = async (req, res, next) => {
   try {
     const allowedUpdates = [
       'name',
+      'mobile',
       'email',
       'location',
-      'farmerDetails',
+      'farmSize',
+      'crops',
+      'farmingExperience',
+      'bankDetails',
+      'farmingType',
       'profilePicture'
     ];
 
     const updates = {};
+    
+    // Handle direct field updates
     Object.keys(req.body).forEach(key => {
       if (allowedUpdates.includes(key)) {
         updates[key] = req.body[key];
       }
     });
 
-    const farmer = await User.findByIdAndUpdate(
-      req.user.id,
+    // Handle farmerDetails nested structure from frontend
+    if (req.body.farmerDetails) {
+      const farmerDetails = req.body.farmerDetails;
+      
+      // Map nested structure to flat database fields
+      if (farmerDetails.farmSize) {
+        updates.farmSize = farmerDetails.farmSize.value || farmerDetails.farmSize;
+      }
+      if (farmerDetails.primaryCrops) {
+        updates.crops = farmerDetails.primaryCrops;
+      }
+      if (farmerDetails.farmingExperience !== undefined) {
+        updates.farmingExperience = farmerDetails.farmingExperience;
+      }
+      if (farmerDetails.farmLocation) {
+        updates.location = {
+          village: farmerDetails.farmLocation.village,
+          district: farmerDetails.farmLocation.district,
+          state: farmerDetails.farmLocation.state,
+          pincode: farmerDetails.farmLocation.pincode
+        };
+      }
+      if (farmerDetails.bankDetails) {
+        updates.bankDetails = farmerDetails.bankDetails;
+      }
+      if (farmerDetails.organicCertified !== undefined) {
+        updates.farmingType = farmerDetails.organicCertified ? 'organic' : 'conventional';
+      }
+    }
+
+    // Use the Farmer model since that's where farmer data is stored
+    const farmer = await Farmer.findByIdAndUpdate(
+      req.user._id,
       updates,
       {
         new: true,
@@ -509,6 +550,7 @@ exports.updateProfile = async (req, res, next) => {
       data: farmer
     });
   } catch (error) {
+    console.error('Profile update error:', error);
     next(error);
   }
 };

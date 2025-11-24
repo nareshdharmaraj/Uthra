@@ -62,21 +62,24 @@ const Home: React.FC = () => {
         </div>
         <div className="container">
           <div className="hero-content">
-            <div className="hero-badge">Connecting Agriculture 🌱</div>
+            <h1 className="hero-title">Uthra</h1>
+            <h2 className="hero-tagline">Connecting farmers and buyers for transparent, fair-trade agriculture</h2>
             <p className="hero-subtitle">
               Uthra bridges the gap in agricultural trade by providing a multi-channel platform where farmers can list their produce and buyers can discover quality crops directly, eliminating middlemen and ensuring fair prices for everyone.
             </p>
             <div className="hero-buttons">
-              <Link to="/register?role=farmer" className="btn btn-primary">
-                <span>Register as Farmer</span>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M6 12L10 8L6 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <Link to="/register?role=farmer" className="btn btn-primary btn-large">
+                <span className="btn-icon">👨‍🌾</span>
+                <span className="btn-text">Register as Farmer</span>
+                <svg className="btn-arrow" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M7 15L12 10L7 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </Link>
-              <Link to="/register?role=buyer" className="btn btn-secondary">
-                <span>Register as Buyer</span>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M6 12L10 8L6 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <Link to="/register?role=buyer" className="btn btn-secondary btn-large">
+                <span className="btn-icon">🛒</span>
+                <span className="btn-text">Register as Buyer</span>
+                <svg className="btn-arrow" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M7 15L12 10L7 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </Link>
             </div>
@@ -138,9 +141,22 @@ const Home: React.FC = () => {
               </div>
             </div>
             <div className="about-image">
-              <div className="image-placeholder">
-                <div className="placeholder-icon">🌾</div>
-                <div className="placeholder-text">Empowering Agriculture</div>
+              <div className="about-visual">
+                <div className="visual-icon">🌾</div>
+                <div className="visual-stats">
+                  <div className="stat-item">
+                    <span className="stat-num">100%</span>
+                    <span className="stat-desc">Transparent</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-num">24/7</span>
+                    <span className="stat-desc">Available</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-num">0%</span>
+                    <span className="stat-desc">Commission</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -247,6 +263,7 @@ const Home: React.FC = () => {
                 <li><Link to="/register?role=farmer">Register as Farmer</Link></li>
                 <li><Link to="/register?role=buyer">Register as Buyer</Link></li>
                 <li><Link to="/register?role=donator">Register as Donator</Link></li>
+                <li><Link to="/contact">Contact Us</Link></li>
               </ul>
             </div>
             
@@ -262,11 +279,11 @@ const Home: React.FC = () => {
             <div className="footer-section">
               <h4>Support</h4>
               <ul className="footer-links">
-                <li><a href="/faq">FAQs</a></li>
-                <li><a href="/help">Help Center</a></li>
-                <li><a href="/terms">Terms of Service</a></li>
-                <li><a href="/privacy">Privacy Policy</a></li>
-                <li><a href="/guidelines">Community Guidelines</a></li>
+                <li><Link to="/faq">FAQs</Link></li>
+                <li><Link to="/help">Help Center</Link></li>
+                <li><Link to="/terms">Terms of Service</Link></li>
+                <li><Link to="/privacy">Privacy Policy</Link></li>
+                <li><Link to="/guidelines">Community Guidelines</Link></li>
               </ul>
             </div>
           </div>

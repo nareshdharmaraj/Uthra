@@ -26,10 +26,19 @@ api.interceptors.request.use(
 // Response interceptor - Handle errors globally
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ message?: string; error?: string }>) => {
+  (error: AxiosError<{ message?: string; error?: string; errors?: Array<{field: string, message: string}> }>) => {
     if (error.response) {
       // Server responded with error status
-      const message = error.response.data?.message || error.response.data?.error || 'An error occurred';
+      const responseData = error.response.data;
+      let message = responseData?.message || responseData?.error || 'An error occurred';
+      
+      // Handle validation errors with specific field messages
+      if (responseData?.errors && Array.isArray(responseData.errors)) {
+        const validationMessages = responseData.errors.map(err => 
+          `${err.field}: ${err.message}`
+        ).join(', ');
+        message = `Validation failed: ${validationMessages}`;
+      }
       
       // Handle specific status codes
       if (error.response.status === 401) {

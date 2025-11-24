@@ -30,11 +30,7 @@ const Users: React.FC = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState('');
 
-  useEffect(() => {
-    fetchUsers();
-  }, [filters]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = React.useCallback(async () => {
     try {
       setLoading(true);
       const params: any = {};
@@ -49,7 +45,11 @@ const Users: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;

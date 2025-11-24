@@ -37,10 +37,13 @@ const generateToken = (id) => {
 // @access  Public
 exports.initiateRegistration = async (req, res, next) => {
   try {
+    console.log('📥 Registration request:', req.body);
+    
     const { mobile, name, role, buyerType } = req.body;
 
     const Model = getModelByRole(role);
     if (!Model) {
+      console.log('❌ Invalid role provided:', role);
       return res.status(400).json({
         success: false,
         message: 'Invalid role. Must be farmer, buyer, or admin'
@@ -53,14 +56,16 @@ exports.initiateRegistration = async (req, res, next) => {
     const existingAdmin = await Admin.findOne({ mobile });
     
     if (existingFarmer || existingBuyer || existingAdmin) {
+      console.log('❌ Mobile number already exists:', mobile);
       return res.status(400).json({
         success: false,
-        message: 'Mobile number already registered'
+        message: 'Mobile number already registered. Please use a different number or try logging in.'
       });
     }
 
     // Validate buyerType for buyers
     if (role === 'buyer' && !buyerType) {
+      console.log('❌ Missing buyer type for buyer registration');
       return res.status(400).json({
         success: false,
         message: 'Buyer type (individual or company) is required'
@@ -80,6 +85,7 @@ exports.initiateRegistration = async (req, res, next) => {
     }
 
     const user = await Model.create(userData);
+    console.log('✅ User created successfully:', user._id);
 
     // Generate OTP
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -97,6 +103,7 @@ exports.initiateRegistration = async (req, res, next) => {
       }
     });
   } catch (error) {
+    console.error('❌ Registration error:', error);
     next(error);
   }
 };
