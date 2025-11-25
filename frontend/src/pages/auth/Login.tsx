@@ -145,6 +145,12 @@ const Login: React.FC = () => {
             {errors.password && <span className="error">{errors.password.message}</span>}
           </div>
 
+          <div className="forgot-password-link">
+            <Link to="/forgot-password" className="forgot-link">
+              Forgot password?
+            </Link>
+          </div>
+
           <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>
             {isLoading ? (
               <>

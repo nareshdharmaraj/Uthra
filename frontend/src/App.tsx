@@ -9,6 +9,7 @@ import { AppDispatch } from './store';
 import Home from './pages/Home';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ForgotPasswordFlow from './pages/auth/forgot-password/ForgotPasswordFlow';
 import FarmerDashboard from './pages/farmer/Dashboard';
 import BuyerDashboard from './pages/buyer/Dashboard';
 import IndividualBuyerDashboard from './pages/individualBuyer/IndividualBuyerDashboard';
@@ -93,6 +94,7 @@ const App: React.FC = () => {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPasswordFlow />} />
         
         {/* Public Pages */}
         <Route path="/contact" element={<Contact />} />

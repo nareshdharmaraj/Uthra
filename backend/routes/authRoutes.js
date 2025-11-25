@@ -50,10 +50,11 @@ router.post('/login', (req, res, next) => {
 }, authController.login);
 router.post('/login/pin', authLimiter, pinLoginValidation, validate, authController.loginWithPIN);
 
-router.post('/verify-otp', authLimiter, authController.verifyOTP);
-router.post('/resend-otp', authLimiter, authController.resendOTP);
+// Note: verify-otp and resend-otp are handled by forgotPasswordRoutes
+// router.post('/verify-otp', authLimiter, authController.verifyOTP);
+// router.post('/resend-otp', authLimiter, authController.resendOTP);
 
-router.post('/forgot-password', authLimiter, authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+// Include forgot password routes
+router.use('/', require('./forgotPasswordRoutes'));
 
 module.exports = router;

@@ -42,6 +42,17 @@ const buyerSchema = new mongoose.Schema({
     }
   },
   
+  // OTP for forgot password functionality
+  otp: {
+    type: String,
+    select: false // Don't include in regular queries
+  },
+  
+  otpExpiry: {
+    type: Date,
+    select: false // Don't include in regular queries
+  },
+  
   // Location
   location: {
     district: String,
