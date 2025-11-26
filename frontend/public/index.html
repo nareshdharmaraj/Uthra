@@ -6,6 +6,15 @@
     <meta name="theme-color" content="#4CAF50" />
     <meta name="description" content="Uthra - Light of Communication between Farmers and Buyers" />
     <title>Uthra - Farmer-Buyer Platform</title>
+    <script src="https://www.google.com/recaptcha/enterprise.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
+    <script>
+      window.onRecaptchaLoad = function() {
+        console.log('🔥 reCAPTCHA Enterprise script loaded and ready');
+        window.recaptchaLoaded = true;
+        // Dispatch custom event for React component
+        window.dispatchEvent(new Event('recaptchaReady'));
+      };
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

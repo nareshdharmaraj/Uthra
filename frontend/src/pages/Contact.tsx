@@ -65,14 +65,14 @@ const Contact: React.FC = () => {
               <div className="contact-card">
                 <div className="contact-icon">📧</div>
                 <h3>Email Support</h3>
-                <p>support@uthra.com</p>
+                <p>noreply.uthra@gmail.com</p>
                 <span>Response within 24 hours</span>
               </div>
               
               <div className="contact-card">
                 <div className="contact-icon">📞</div>
                 <h3>Phone Support</h3>
-                <p>+91 1800-123-4567</p>
+                <p>+91 7200 7545 66</p>
                 <span>Mon-Fri: 9 AM - 6 PM IST</span>
               </div>
               

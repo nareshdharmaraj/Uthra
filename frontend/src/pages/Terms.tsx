@@ -113,9 +113,9 @@ const Terms: React.FC = () => {
               <p>
                 For questions about these Terms of Service, please contact us at:
                 <br />
-                Email: legal@uthra.com
+                Email: noreply.uthra@gmail.com
                 <br />
-                Phone: +91 1800-123-4567
+                Phone: +91 7200 7545 66
               </p>
             </section>
           </div>

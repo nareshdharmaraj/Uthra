@@ -4,6 +4,7 @@ const Buyer = require('../models/BuyerModel');
 const Admin = require('../models/AdminModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const RecaptchaService = require('../services/recaptchaService');
 
 // Helper to get model by role
 const getModelByRole = (role) => {
@@ -328,7 +329,26 @@ exports.login = async (req, res, next) => {
     console.log('🔐 Login attempt:', { mobile: req.body.mobile });
     console.log('🔍 Mongoose connection state:', mongoose.connection.readyState);
     
-    const { mobile, password } = req.body;
+    const { mobile, password, recaptchaToken } = req.body;
+
+    // Verify reCAPTCHA first
+    if (recaptchaToken) {
+      console.log('🔒 Verifying reCAPTCHA...');
+      const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
+      const recaptchaResult = await RecaptchaService.verifyToken(recaptchaToken, clientIP);
+      
+      if (!recaptchaResult.success) {
+        console.log('❌ reCAPTCHA verification failed');
+        return res.status(400).json({
+          success: false,
+          message: 'reCAPTCHA verification failed. Please try again.',
+          recaptchaError: true
+        });
+      }
+      console.log('✅ reCAPTCHA verified successfully');
+    } else {
+      console.log('⚠️ No reCAPTCHA token provided - proceeding without verification');
+    }
 
     // Search in all collections (farmers, buyers, admins)
     console.log('📞 Searching for user with mobile:', mobile);

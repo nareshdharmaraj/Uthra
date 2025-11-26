@@ -96,9 +96,9 @@ const Privacy: React.FC = () => {
               <p>
                 For privacy-related questions or requests:
                 <br />
-                Email: privacy@uthra.com
+                Email: noreply.uthra@gmail.com
                 <br />
-                Phone: +91 1800-123-4567
+                Phone: +91 7200 7545 66
               </p>
             </section>
           </div>
